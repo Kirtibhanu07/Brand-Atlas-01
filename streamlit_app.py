@@ -38,7 +38,14 @@ def prepare_node() -> str:
     modules = ROOT / "node_modules"
     if not modules.exists() or not (modules / "playwright").exists():
         completed = subprocess.run(
-            [npm, "install", "--omit=optional", "--no-audit", "--no-fund"],
+            [
+                npm,
+                "install",
+                "--omit=dev",
+                "--include=optional",
+                "--no-audit",
+                "--no-fund",
+            ],
             cwd=ROOT, capture_output=True, text=True, timeout=8 * 60, check=False,
             env={**os.environ, "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "1"},
         )
