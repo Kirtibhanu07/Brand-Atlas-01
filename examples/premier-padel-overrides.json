@@ -1,0 +1,17 @@
+{
+  "213eaacdc3b66e3e80561b0cfbfc1d6dbca86a7df1c81a20e47f9cfcd91346e1": { "name": "Red Bull TV", "relationship": "Media brand", "confidence": 1 },
+  "c245409430f581f833a9d2d6f00f9eaaff970a2bba07e0aecb9e3221574cd7fd": { "name": "Premier Padel", "relationship": "Organizer", "confidence": 1 },
+  "4b83d18e855e37f67308672b1207424736940a00ec3d446ef0ed4b02ccab0676": { "name": "International Padel Federation", "relationship": "Governing body", "confidence": 1 },
+  "9721b1b0e23e1a07c3c9de07d6862bd7adf91766fadf9d2b165c65a15f901fae": { "name": "Qatar Airways", "relationship": "Partner", "confidence": 1 },
+  "fdafc0fb1f80bd5b1c05f0c933a1f90e5fbcd87558349f20fe7cf4aa4551e26e": { "name": "Heineken 0.0", "relationship": "Partner", "confidence": 1 },
+  "4286d75dd7dabda3878ef8444fa722a67fbc7d523b79a5171c0858bac47566a7": { "name": "WHOOP", "relationship": "Partner", "confidence": 1 },
+  "cad990863dbc9319181d3412599decec14d45188fba2f24cff3483ba5f86adce": { "name": "Audemars Piguet", "relationship": "Partner", "confidence": 1 },
+  "ea603ff715b7a1b52dd0fda23f737cc9af8d1e580c0f931da8636997720498e2": { "name": "Wilson", "relationship": "Partner", "confidence": 1 },
+  "d82f192cbc4ddf0d4563adf1f55d0a7ea5ab3f7bfbd9ac67c8225d73703de54c": { "name": "Bullpadel", "relationship": "Partner", "confidence": 1 },
+  "6fe17e5cc38fd06622639b44b26f57fdd87b0a290b8d34307bc409f0eb0dd466": { "name": "MejorSet", "relationship": "Partner", "confidence": 1 },
+  "27cbc010d735ca2005f8aadc4151f124978a049dbbbe26bd8c42ad43e24e5a25": { "name": "Mondo", "relationship": "Partner", "confidence": 1 },
+  "4c0619017fc729640481e3a65a6722f78bddcd579f73980da1a85bb9b79878f0": { "name": "Playtomic", "relationship": "Partner", "confidence": 1 },
+  "3ac3fbd3056e5ed96355074e19ecb7cfe2e22df31932101d0481ddb127363a02": { "name": "WHO Foundation", "relationship": "Partner", "confidence": 1 },
+  "93385539e8bd52eedd8e82c13b42c2a8c3627882d4f2af7df113b09f25b10ba8": { "name": "Premier Padel", "relationship": "Organizer", "confidence": 1 },
+  "9ffd97f7c8ac7598cc13b044bba66c7bea673347552e17f1bd430c7fb2de3ac0": { "name": "International Padel Federation", "relationship": "Governing body", "confidence": 1 }
+}
