@@ -17,6 +17,18 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent
 
 
+def node_module_works(node: str, module: str) -> bool:
+    probe = subprocess.run(
+        [node, "-e", f"require('{module}')"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    return probe.returncode == 0
+
+
 def valid_website(value: str) -> str:
     value = (value or "").strip()
     parsed = urlsplit(value)
@@ -36,7 +48,11 @@ def prepare_node() -> str:
     if not node or not npm:
         raise RuntimeError("Node.js and npm were not installed. Check packages.txt in the deployment logs.")
     modules = ROOT / "node_modules"
-    if not modules.exists() or not (modules / "playwright").exists():
+    if (
+        not modules.exists()
+        or not (modules / "playwright").exists()
+        or not node_module_works(node, "sharp")
+    ):
         completed = subprocess.run(
             [
                 npm,
@@ -51,6 +67,11 @@ def prepare_node() -> str:
         )
         if completed.returncode:
             raise RuntimeError("npm dependency installation failed:\n" + completed.stderr[-3000:])
+    if not node_module_works(node, "sharp"):
+        raise RuntimeError(
+            "Sharp's platform binary is unavailable after npm install. "
+            "Check that optional npm dependencies are enabled in the deployment logs."
+        )
     return node
 
 
