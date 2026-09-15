@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mergeCandidates } from "../src/cli.mjs";
+import { mergeCandidates } from "../src/records.mjs";
 
 const record = (name, confidence, reviewRequired, sha256) => ({
   name,
