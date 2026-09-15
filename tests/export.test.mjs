@@ -13,3 +13,15 @@ test("writes safe, searchable report formats", async () => {
   assert.match(html, /=ACME &lt;Co&gt;/); assert.doesNotMatch(html, /<h2>=ACME <Co>/);
   assert.match(csv, /'=ACME <Co>/); assert.equal(JSON.parse(json).brands.length, 1);
 });
+
+test("writes a cloud-compatible PowerPoint", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "brand-atlas-pptx-"));
+  const manifest = {sourceUrl:"https://example.com/",finishedAt:"2026-01-01T00:00:00Z",coverage:{status:"bounded",pagesVisited:1,warnings:[]},brands:[{id:"acme",name:"Acme Sports",relationship:"Sponsor",section:"Official sponsors",confidence:.92,reviewRequired:false,brandUrl:"https://acme.example",evidence:[{sourcePage:"https://example.com/"}],logos:[]}]};
+  const previous = process.env.BRAND_ATLAS_PPTX_ENGINE;
+  process.env.BRAND_ATLAS_PPTX_ENGINE = "portable";
+  try { await exportReport(manifest, dir, {pptx:true,zip:false}); }
+  finally { if (previous === undefined) delete process.env.BRAND_ATLAS_PPTX_ENGINE; else process.env.BRAND_ATLAS_PPTX_ENGINE = previous; }
+  const file = await fs.readFile(path.join(dir,"brand-atlas.pptx"));
+  assert.equal(file.subarray(0,2).toString(), "PK");
+  assert.ok(file.length > 10_000);
+});

@@ -5,6 +5,7 @@ from app import safe_run_file, validate_website
 class PythonAppTests(unittest.TestCase):
     def test_url_boundary(self):
         self.assertEqual(validate_website("https://example.com/path"), "https://example.com/path")
+        self.assertEqual(validate_website("example.com/path"), "https://example.com/path")
         for value in ("file:///etc/passwd", "http://user:pass@example.com", "https://example.com:8443"):
             with self.assertRaises(ValueError):
                 validate_website(value)

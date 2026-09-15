@@ -8,6 +8,8 @@ test("name inference identifies trustworthy alt text and reviewable domains", ()
   assert.deepEqual(inferName({alt:"Acme",aria:"",title:"",linkText:"",href:"",src:"https://x.test/a.svg"}).reviewRequired, false);
   const inferred = inferName({alt:"",aria:"",title:"",linkText:"",href:"https://whoop.com/about",src:"https://cdn.test/a9f.svg"});
   assert.equal(inferred.name, "Whoop"); assert.equal(inferred.reviewRequired, true);
+  const hosted = inferName({alt:".",aria:"",title:"",linkText:". .",href:"https://ghostwhite-cassowary-457839.hostingersite.com/contacts/",src:"https://cdn.example/akeo-logo.png",pageUrl:"https://club.example/"});
+  assert.equal(hosted.name, "Akeo");
 });
 
 test("extracts partner marks with evidence and excludes social icons", async (t) => {
@@ -21,4 +23,17 @@ test("extracts partner marks with evidence and excludes social icons", async (t)
   assert.equal(result.candidates[0].name, "Acme Sports");
   assert.equal(result.candidates[0].relationship, "Partner");
   assert.match(result.candidates[0].evidence, /Tour partners/i);
+});
+
+test("extracts lazy and hidden carousel logos when the sponsor label is a sibling", async (t) => {
+  let browser;
+  try { browser = await chromium.launch({headless:true}); }
+  catch { try { browser = await chromium.launch({headless:true, executablePath:"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}); } catch { return t.skip("Chromium is not installed"); } }
+  const page = await browser.newPage({viewport:{width:1200,height:800}});
+  await page.setContent(`<title>Club</title><section><div><h2>SPONSORED BY</h2></div><div><div><div><div><div><div><img alt="Akeo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" data-src="https://cdn.example/akeo.png" style="display:none"></div></div></div></div></div></div></section>`);
+  const result = await extractPage(page); await browser.close();
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].name, "Akeo");
+  assert.equal(result.candidates[0].sourceUrl, "https://cdn.example/akeo.png");
+  assert.equal(result.candidates[0].relationship, "Sponsor");
 });
