@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { assertPublicUrl, normalizeUrl, parseRobots, safeFetch } from "./network.mjs";
 import { extractPage } from "./extract.mjs";
 import { exportReport } from "./export.mjs";
+import { mergeCandidates, slug } from "./records.mjs";
 
 function usage() {
   return `Brand Atlas\n\nUsage:\n  node src/cli.mjs <website> [--output DIR] [--max-pages N] [--overrides FILE] [--headed] [--no-pptx] [--no-zip] [--ignore-robots]\n\nExample:\n  node src/cli.mjs https://premierpadel.com/en/home-page --output output/premier-padel`;
@@ -31,7 +32,6 @@ export function parseArgs(argv) {
   return args;
 }
 
-const slug = (s) => s.normalize("NFKD").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase().slice(0, 70) || "unknown-logo";
 const hash = (b) => crypto.createHash("sha256").update(b).digest("hex");
 const BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
 const siteHost = (value) => new URL(value).hostname.replace(/^www\./i, "").toLowerCase();
@@ -77,28 +77,6 @@ async function normalizeLogo(candidate, outputDir, ordinal) {
     await image.resize(900, 420, { fit: "inside", withoutEnlargement: false }).png().toFile(path.join(outputDir, previewRel));
   } catch { await fs.copyFile(path.join(outputDir, rel), path.join(outputDir, previewRel)).catch(() => {}); }
   return { path: rel, previewPath: previewRel, sha256: digest, mimeType: mime || `image/${ext}`, sourceUrl: candidate.sourceUrl, status: "downloaded", ...info };
-}
-
-export function mergeCandidates(records) {
-  const map = new Map(), logoOwners = new Map();
-  for (const r of records) {
-    const nameKey = r.name.toLowerCase().replace(/[^a-z0-9]+/g, "") || r.logo.sha256;
-    const key = logoOwners.get(r.logo.sha256) || nameKey;
-    let b = map.get(key);
-    if (!b) {
-      b = { id: slug(r.name), name: r.name, nameSource: r.nameSource, confidence: r.confidence, reviewRequired: r.reviewRequired, relationship: r.relationship, relationships: [r.relationship], section: r.section, brandUrl: r.brandUrl, evidence: [], logos: [] }; map.set(key, b);
-    }
-    else if (r.confidence > b.confidence || (!r.reviewRequired && b.reviewRequired)) {
-      Object.assign(b, { id: slug(r.name), name: r.name, nameSource: r.nameSource, confidence: r.confidence, reviewRequired: r.reviewRequired, relationship: r.relationship, relationships: [r.relationship], section: r.section, brandUrl: r.brandUrl || b.brandUrl });
-    }
-    logoOwners.set(r.logo.sha256, key);
-    if (!b.relationships.includes(r.relationship)) { b.relationships.push(r.relationship); b.relationship = b.relationships.join("; "); }
-    b.confidence = Math.max(b.confidence, r.confidence); b.reviewRequired = b.reviewRequired && r.reviewRequired;
-    if (!b.brandUrl && r.brandUrl) b.brandUrl = r.brandUrl;
-    if (!b.evidence.some((e) => e.sourcePage === r.sourcePage && e.sourceUrl === r.sourceUrl)) b.evidence.push({ sourcePage: r.sourcePage, sourceUrl: r.sourceUrl, section: r.section, text: r.evidence });
-    if (!b.logos.some((l) => l.sha256 === r.logo.sha256)) b.logos.push(r.logo);
-  }
-  return [...map.values()].sort((a,b) => a.relationship.localeCompare(b.relationship) || a.name.localeCompare(b.name));
 }
 
 async function applyOverrides(records, file) {
