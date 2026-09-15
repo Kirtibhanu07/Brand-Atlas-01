@@ -33,6 +33,16 @@ export function parseArgs(argv) {
 
 const slug = (s) => s.normalize("NFKD").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase().slice(0, 70) || "unknown-logo";
 const hash = (b) => crypto.createHash("sha256").update(b).digest("hex");
+const BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
+const siteHost = (value) => new URL(value).hostname.replace(/^www\./i, "").toLowerCase();
+
+function decodeDataImage(value) {
+  const match = String(value).match(/^data:(image\/[a-z0-9.+-]+)(?:;charset=[^;,]+)?(;base64)?,(.*)$/is);
+  if (!match) throw new Error("Unsupported embedded image data");
+  const body = match[2] ? Buffer.from(match[3], "base64") : Buffer.from(decodeURIComponent(match[3]));
+  if (body.length > 10_000_000) throw new Error("Embedded image exceeded 10000000 bytes");
+  return { body, mime: match[1].toLowerCase() };
+}
 
 async function browserInstance(headed) {
   try { return await chromium.launch({ headless: !headed }); }
@@ -49,6 +59,7 @@ async function browserInstance(headed) {
 async function normalizeLogo(candidate, outputDir, ordinal) {
   let body, mime = "";
   if (candidate.kind === "inline-svg") { body = Buffer.from(candidate.inlineSvg); mime = "image/svg+xml"; }
+  else if (candidate.kind === "data-image" || String(candidate.sourceUrl).startsWith("data:image/")) ({ body, mime } = decodeDataImage(candidate.sourceUrl));
   else {
     if (!candidate.sourceUrl || !/^https?:/i.test(candidate.sourceUrl)) throw new Error("Logo has no downloadable HTTP URL");
     const response = await safeFetch(candidate.sourceUrl, { maxBytes: 10_000_000, headers: { referer: candidate.sourcePage } });
@@ -68,14 +79,19 @@ async function normalizeLogo(candidate, outputDir, ordinal) {
   return { path: rel, previewPath: previewRel, sha256: digest, mimeType: mime || `image/${ext}`, sourceUrl: candidate.sourceUrl, status: "downloaded", ...info };
 }
 
-function mergeCandidates(records) {
-  const map = new Map();
+export function mergeCandidates(records) {
+  const map = new Map(), logoOwners = new Map();
   for (const r of records) {
-    const key = r.name.toLowerCase().replace(/[^a-z0-9]+/g, "") || r.logo.sha256;
+    const nameKey = r.name.toLowerCase().replace(/[^a-z0-9]+/g, "") || r.logo.sha256;
+    const key = logoOwners.get(r.logo.sha256) || nameKey;
     let b = map.get(key);
     if (!b) {
       b = { id: slug(r.name), name: r.name, nameSource: r.nameSource, confidence: r.confidence, reviewRequired: r.reviewRequired, relationship: r.relationship, relationships: [r.relationship], section: r.section, brandUrl: r.brandUrl, evidence: [], logos: [] }; map.set(key, b);
     }
+    else if (r.confidence > b.confidence || (!r.reviewRequired && b.reviewRequired)) {
+      Object.assign(b, { id: slug(r.name), name: r.name, nameSource: r.nameSource, confidence: r.confidence, reviewRequired: r.reviewRequired, relationship: r.relationship, relationships: [r.relationship], section: r.section, brandUrl: r.brandUrl || b.brandUrl });
+    }
+    logoOwners.set(r.logo.sha256, key);
     if (!b.relationships.includes(r.relationship)) { b.relationships.push(r.relationship); b.relationship = b.relationships.join("; "); }
     b.confidence = Math.max(b.confidence, r.confidence); b.reviewRequired = b.reviewRequired && r.reviewRequired;
     if (!b.brandUrl && r.brandUrl) b.brandUrl = r.brandUrl;
@@ -106,7 +122,7 @@ export async function run(options) {
     catch (e) { warnings.push(`robots.txt could not be read: ${e.message}`); }
   }
   if (!robots.isAllowed(root)) throw new Error("robots.txt disallows crawling the supplied URL for BrandAtlas");
-  const browser = await browserInstance(options.headed); const context = await browser.newContext({ viewport: {width: 1440,height: 1000}, serviceWorkers: "block" });
+  const browser = await browserInstance(options.headed); const context = await browser.newContext({ viewport: {width: 1440,height: 1000}, serviceWorkers: "block", userAgent: BROWSER_UA, locale: "en-US", colorScheme: "light", extraHTTPHeaders: {"accept-language":"en-US,en;q=0.9"} });
   const dnsCache = new Map();
   await context.route("**/*", async (route) => {
     const url = route.request().url();
@@ -117,7 +133,7 @@ export async function run(options) {
   });
   const rootUrl = new URL(root); const firstSegment = rootUrl.pathname.split("/").filter(Boolean)[0];
   const prefixes = firstSegment && /^[a-z]{2}(?:-[a-z]{2})?$/i.test(firstSegment) ? ["", `/${firstSegment}`] : [""];
-  const conventional = prefixes.flatMap((prefix) => ["partners","sponsors","our-partners"].map((name) => `${origin}${prefix}/${name}`));
+  const conventional = prefixes.flatMap((prefix) => ["partners","sponsors","our-partners","official-partners","partnership","marketing","commercial","mitra"].map((name) => `${origin}${prefix}/${name}`));
   const queue = [root, ...conventional.map((u) => normalizeUrl(u))], seen = new Set(), finalSeen = new Set();
   try {
     while (queue.length && seen.size < options.maxPages) {
@@ -125,15 +141,19 @@ export async function run(options) {
       const page = await context.newPage();
       try {
         const response = await page.goto(requested, {waitUntil:"domcontentloaded",timeout:45_000});
+        await page.waitForLoadState("networkidle", {timeout:8_000}).catch(() => {});
         await page.waitForTimeout(1200);
         for (let i=0;i<5;i++) { await page.evaluate((step) => scrollTo(0, document.body.scrollHeight * step/5), i+1); await page.waitForTimeout(280); }
         await page.evaluate(() => scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(700);
         const out = await extractPage(page); const finalUrl = normalizeUrl(page.url()); if (finalSeen.has(finalUrl)) continue; finalSeen.add(finalUrl); const status = response?.status() || 0; pages.push({url:finalUrl,title:out.title,status});
         if (status < 200 || status >= 400) warnings.push(`${finalUrl}: page returned HTTP ${status}.`);
+        if (status === 403 && /cloudflare|just a moment|attention required/i.test(out.title || "")) warnings.push(`${finalUrl}: anti-bot protection blocked the automated browser. Try the deployed headful browser mode or provide a public partner page.`);
         candidates.push(...out.candidates); warnings.push(...out.warnings.map((w) => `${finalUrl}: ${w}`));
+        const discovered = [];
         for (const link of out.links.sort((a,b) => b.priority-a.priority)) {
-          try { const next = normalizeUrl(link.url, finalUrl); if (new URL(next).origin === origin && !seen.has(next) && robots.isAllowed(next)) queue.push(next); } catch {}
+          try { const next = normalizeUrl(link.url, finalUrl); if (siteHost(next) === siteHost(root) && !seen.has(next) && robots.isAllowed(next)) discovered.push(next); } catch {}
         }
+        queue.unshift(...discovered.filter((next, index) => discovered.indexOf(next) === index));
       } catch (e) { pages.push({url:requested,title:"",status:0,error:e.message}); warnings.push(`${requested}: ${e.message}`); }
       finally { await page.close(); }
       if (robots.crawlDelayMs) await new Promise((r) => setTimeout(r, Math.min(robots.crawlDelayMs, 5000)));
@@ -148,6 +168,7 @@ export async function run(options) {
   const uniqueWarnings = [...new Set(warnings)];
   const reviewed = await applyOverrides(normalized, options.overrides);
   const brands = mergeCandidates(reviewed);
+  if (!brands.length) uniqueWarnings.push("No sponsor or partner logo assets were found in the rendered pages. The site may not publish an inventory or may block automated access.");
   const reportWarnings = brands.some((b) => b.reviewRequired) ? uniqueWarnings : uniqueWarnings.filter((w) => !w.includes("Some names were inferred"));
   const manifest = { schemaVersion:"1.0", sourceUrl:root, startedAt, finishedAt:new Date().toISOString(), options:{maxPages:options.maxPages,respectRobots:options.respectRobots,overrides:options.overrides || null}, coverage:{status:queue.length ? "bounded" : reportWarnings.some((w) => /could not|error|timeout|blocked/i.test(w)) ? "partial" : "bounded",pagesVisited:pages.length,pagesDiscovered:seen.size+queue.length,limitReached:seen.size>=options.maxPages&&queue.length>0,warnings:reportWarnings}, pages, brands };
   const files = await exportReport(manifest, outputDir, {pptx:options.pptx,zip:options.zip});

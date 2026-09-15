@@ -41,7 +41,7 @@ function addText(slide, text, position, style) {
   box.text = text; box.text.style = { typeface: "Arial", autoFit: "shrinkText", margin: 0, ...style }; return box;
 }
 
-async function writePptx(manifest, outputDir) {
+async function writePptxWithArtifactTool(manifest, outputDir) {
   const { Presentation, PresentationFile } = await import("@oai/artifact-tool");
   const p = Presentation.create({ slideSize: { width: 1280, height: 720 } });
   let slide = p.slides.add(); slide.background.fill = "#101828";
@@ -54,14 +54,14 @@ async function writePptx(manifest, outputDir) {
   for (let offset = 0; offset < manifest.brands.length; offset += per) {
     slide = p.slides.add(); slide.background.fill = "#FFFFFF";
     addText(slide, "Brand inventory", {left:54,top:28,width:780,height:48}, {fontSize:30,bold:true,color:"#101828"});
-    addText(slide, `${offset + 1}–${Math.min(offset + per, manifest.brands.length)} of ${manifest.brands.length}`, {left:1030,top:39,width:190,height:25}, {fontSize:13,color:"#667085",alignment:"right"});
+    addText(slide, `${offset + 1}–${Math.min(offset + per, manifest.brands.length)} of ${manifest.brands.length}`, {left:980,top:39,width:240,height:30}, {fontSize:12,color:"#667085",alignment:"right"});
     const group = manifest.brands.slice(offset, offset + per); const notes = [];
     for (let i = 0; i < group.length; i++) {
       const b = group[i], col = i % 4, row = Math.floor(i / 4); const left = 52 + col * 304, top = 105 + row * 190;
       const preview = b.logos.find((l) => l.previewPath)?.previewPath || b.logos[0]?.path;
       if (preview) { try { const bytes = await fs.readFile(path.join(outputDir, preview)); slide.images.add({ blob: new Uint8Array(bytes), contentType: "image/png", alt: `${b.name} logo`, fit: "contain", position: {left,top,width:250,height:104} }); } catch {} }
       addText(slide, b.name, {left,top:top+118,width:250,height:28}, {fontSize:16,bold:true,color:"#101828",alignment:"center"});
-      addText(slide, `${b.relationship}${b.reviewRequired ? " · REVIEW" : ""}`, {left,top:top+148,width:250,height:22}, {fontSize:10,bold:b.reviewRequired,color:b.reviewRequired?"#9A3412":"#667085",alignment:"center"});
+      addText(slide, `${b.relationship}${b.reviewRequired ? " · REVIEW" : ""}`, {left,top:top+148,width:250,height:30}, {fontSize:9,bold:b.reviewRequired,color:b.reviewRequired?"#9A3412":"#667085",alignment:"center"});
       notes.push(`${b.name}\nSource: ${b.evidence[0]?.sourcePage || manifest.sourceUrl}\nLogo: ${b.logos[0]?.sourceUrl || "Unavailable"}`);
     }
     addText(slide, "Names marked REVIEW need human confirmation before external use.", {left:54,top:680,width:850,height:18}, {fontSize:10,color:"#667085"});
@@ -70,6 +70,81 @@ async function writePptx(manifest, outputDir) {
   const pptxPath = path.join(outputDir, "brand-atlas.pptx");
   await (await PresentationFile.exportPptx(p)).save(pptxPath);
   return pptxPath;
+}
+
+function containBox(width, height, box) {
+  const ratio = Math.max(1, Number(width) || 900) / Math.max(1, Number(height) || 420);
+  let w = box.w, h = w / ratio;
+  if (h > box.h) { h = box.h; w = h * ratio; }
+  return { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h };
+}
+
+async function removeMissingContentTypeTargets(pptxPath) {
+  const zip = await JSZip.loadAsync(await fs.readFile(pptxPath));
+  const contentTypes = zip.file("[Content_Types].xml");
+  if (!contentTypes) return;
+  let xml = await contentTypes.async("string");
+  for (const match of [...xml.matchAll(/<Override\b[^>]*PartName="\/([^"]+)"[^>]*\/>/g)]) {
+    if (!zip.file(match[1])) xml = xml.replace(match[0], "");
+  }
+  zip.file("[Content_Types].xml", xml);
+  await fs.writeFile(pptxPath, await zip.generateAsync({type:"nodebuffer",compression:"DEFLATE"}));
+}
+
+async function writePptxPortable(manifest, outputDir) {
+  const { default: PptxGenJS } = await import("pptxgenjs");
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = "Brand Atlas";
+  pptx.subject = `Sponsors and partners found on ${manifest.sourceUrl}`;
+  pptx.title = `Brand Atlas — ${new URL(manifest.sourceUrl).hostname}`;
+  pptx.company = "Brand Atlas";
+  pptx.lang = "en-US";
+  pptx.theme = { headFontFace: "Arial", bodyFontFace: "Arial", lang: "en-US" };
+
+  let slide = pptx.addSlide();
+  slide.background = { color: "101828" };
+  slide.addText("BRAND ATLAS", {x:.75,y:1.05,w:8.8,h:.35,fontFace:"Arial",fontSize:13,bold:true,color:"D7B56D",charSpacing:3,margin:0});
+  slide.addText("Sponsors and partners\nfound on the website", {x:.75,y:1.78,w:10.8,h:1.85,fontFace:"Arial",fontSize:38,bold:true,color:"FFFFFF",breakLine:false,margin:0,fit:"shrink"});
+  slide.addText(new URL(manifest.sourceUrl).hostname, {x:.75,y:4.5,w:7.4,h:.45,fontFace:"Arial",fontSize:18,color:"D0D5DD",margin:0});
+  slide.addText(`${manifest.brands.length} records   ${manifest.coverage.pagesVisited} pages   ${manifest.coverage.status} crawl`, {x:.75,y:6.65,w:9.5,h:.25,fontFace:"Arial",fontSize:10,color:"98A2B3",margin:0});
+  slide.addNotes(`Source website: ${manifest.sourceUrl}\nCaptured: ${manifest.finishedAt}\nCoverage: ${manifest.coverage.status}`);
+
+  const perSlide = 8;
+  for (let offset = 0; offset < manifest.brands.length; offset += perSlide) {
+    slide = pptx.addSlide();
+    slide.background = { color: "FFFFFF" };
+    slide.addText("Brand inventory", {x:.55,y:.3,w:8.2,h:.5,fontFace:"Arial",fontSize:24,bold:true,color:"101828",margin:0});
+    slide.addText(`${offset + 1}–${Math.min(offset + perSlide, manifest.brands.length)} of ${manifest.brands.length}`, {x:10.7,y:.4,w:2.0,h:.25,fontFace:"Arial",fontSize:9,color:"667085",align:"right",margin:0});
+    const group = manifest.brands.slice(offset, offset + perSlide); const notes = [];
+    for (let index = 0; index < group.length; index++) {
+      const brand = group[index], col = index % 4, row = Math.floor(index / 4);
+      const x = .55 + col * 3.18, y = 1.1 + row * 2.55;
+      const logo = brand.logos.find((item) => item.previewPath) || brand.logos[0];
+      if (logo?.previewPath || logo?.path) {
+        const file = path.join(outputDir, logo.previewPath || logo.path);
+        try { await fs.access(file); slide.addImage({path:file,...containBox(logo.width, logo.height, {x,y,w:2.62,h:1.35})}); } catch {}
+      }
+      slide.addText(brand.name, {x,y:y+1.48,w:2.62,h:.35,fontFace:"Arial",fontSize:12,bold:true,color:"101828",align:"center",valign:"mid",fit:"shrink",margin:0});
+      slide.addText(`${brand.relationship}${brand.reviewRequired ? "   REVIEW" : ""}`, {x,y:y+1.88,w:2.62,h:.32,fontFace:"Arial",fontSize:8,bold:brand.reviewRequired,color:brand.reviewRequired?"9A3412":"667085",align:"center",fit:"shrink",margin:0});
+      notes.push(`${brand.name}\nSource: ${brand.evidence[0]?.sourcePage || manifest.sourceUrl}\nLogo: ${brand.logos[0]?.sourceUrl || "Unavailable"}`);
+    }
+    slide.addText("Names marked REVIEW need human confirmation before external use.", {x:.55,y:7.15,w:8.8,h:.18,fontFace:"Arial",fontSize:7,color:"667085",margin:0});
+    slide.addNotes(notes.join("\n\n"));
+  }
+  const pptxPath = path.join(outputDir, "brand-atlas.pptx");
+  await pptx.writeFile({ fileName: pptxPath });
+  await removeMissingContentTypeTargets(pptxPath);
+  return pptxPath;
+}
+
+async function writePptx(manifest, outputDir) {
+  if (process.env.BRAND_ATLAS_PPTX_ENGINE === "portable") return writePptxPortable(manifest, outputDir);
+  try { return await writePptxWithArtifactTool(manifest, outputDir); }
+  catch (error) {
+    if (error?.code !== "ERR_MODULE_NOT_FOUND" && !/Cannot find package.*artifact-tool/i.test(error?.message || "")) throw error;
+    return writePptxPortable(manifest, outputDir);
+  }
 }
 
 export async function exportReport(manifest, outputDir, options = {}) {
