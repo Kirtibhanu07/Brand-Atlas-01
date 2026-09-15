@@ -40,7 +40,7 @@ To deploy on Streamlit Community Cloud:
 3. Create an app using the repository, the `main` branch, and `streamlit_app.py` as the entrypoint.
 4. Select Python 3.12 in Advanced settings and deploy.
 
-Community Cloud reads `requirements.txt` for Streamlit and `packages.txt` for Chromium, Node.js, and npm. The app installs the public Node packages on first startup and caches them for the running instance. The cloud interface exports the original-logo ZIP, HTML report, CSV, and JSON. The local CLI also exports PowerPoint when the optional Artifact Tool package is available.
+Community Cloud reads `requirements.txt` for Streamlit and `packages.txt` for Chromium, Node.js, npm, and the virtual display used by difficult sites. The app installs the public Node packages on first startup and caches them for the running instance. The cloud interface exports the original-logo ZIP, PowerPoint, HTML report, CSV, and JSON.
 
 The workflow in `.github/workflows/tests.yml` runs the browser, JavaScript, and Python checks on every push and pull request.
 
@@ -67,9 +67,11 @@ Useful options:
 
 ## How detection works
 
-The extractor searches visible images, inline SVG, and CSS background images inside sections whose headings or markup indicate partners, sponsors, suppliers, clients, organizers, associations, or federations. It also reads relevant logos in page footers. Social icons, navigation controls, flags, article thumbnails, and other common non-brand assets are removed.
+The extractor searches regular and deferred images, inline SVG, embedded image objects, responsive `srcset` assets, data images, and CSS backgrounds. It recognizes English and Indonesian commercial labels such as partners, official sponsors, supported by, `mitra`, and `sponsor utama`. Labels may sit above, below, or beside a carousel or footer table. Social icons, navigation controls, flags, article thumbnails, and other common non-brand assets are removed.
 
-Each record keeps the page URL, original asset URL, nearby heading, link target, naming method, confidence, and review status. Duplicate website assets are identified by SHA-256. The original file remains unchanged while a PNG preview is generated separately.
+The crawler uses a standard browser identity, follows `www` redirects as the same site, prioritizes discovered partnership and marketing links, and checks additional conventional paths. Streamlit runs Chromium through a virtual display, which helps sites that reject headless browsers. If Cloudflare or a broken client application still blocks access, the report records that limitation. It does not attempt to bypass the site's security controls.
+
+Each record keeps the page URL, original asset URL, nearby heading, link target, naming method, confidence, and review status. Duplicate website assets are identified by SHA-256, even when the same carousel image has inconsistent labels. The original file remains unchanged while a PNG preview is generated separately.
 
 For repeatable human review, pass a JSON object to `--overrides`. Keys can be a logo SHA-256, its source URL, or its detected name. Values may set `name`, `relationship`, `reviewRequired`, and `confidence`; `{ "ignore": true }` removes a false positive. See `examples/premier-padel-overrides.json`.
 

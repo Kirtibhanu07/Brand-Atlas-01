@@ -31,14 +31,17 @@ def validate_website(value: str) -> str:
     """Perform cheap API-boundary validation; the crawler performs DNS checks."""
     if not isinstance(value, str) or len(value) > 2048:
         raise ValueError("Website URL is missing or too long")
-    parsed = urlsplit(value.strip())
+    value = value.strip()
+    if value and "://" not in value:
+        value = "https://" + value
+    parsed = urlsplit(value)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         raise ValueError("Enter a complete http:// or https:// website URL")
     if parsed.username or parsed.password:
         raise ValueError("URLs containing credentials are not allowed")
     if parsed.port and parsed.port not in {80, 443}:
         raise ValueError("Only standard web ports 80 and 443 are allowed")
-    return value.strip()
+    return value
 
 
 def safe_run_file(run_id: str, relative: str) -> Path:

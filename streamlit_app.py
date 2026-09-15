@@ -31,6 +31,8 @@ def node_module_works(node: str, module: str) -> bool:
 
 def valid_website(value: str) -> str:
     value = (value or "").strip()
+    if value and "://" not in value:
+        value = "https://" + value
     parsed = urlsplit(value)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         raise ValueError("Enter a complete public http:// or https:// URL.")
@@ -52,6 +54,7 @@ def prepare_node() -> str:
         not modules.exists()
         or not (modules / "playwright").exists()
         or not node_module_works(node, "sharp")
+        or not node_module_works(node, "pptxgenjs")
     ):
         completed = subprocess.run(
             [
@@ -72,6 +75,8 @@ def prepare_node() -> str:
             "Sharp's platform binary is unavailable after npm install. "
             "Check that optional npm dependencies are enabled in the deployment logs."
         )
+    if not node_module_works(node, "pptxgenjs"):
+        raise RuntimeError("The PowerPoint export dependency is unavailable after npm install.")
     return node
 
 
@@ -79,7 +84,10 @@ def run_scan(website: str, max_pages: int) -> tuple[dict, dict[str, bytes]]:
     node = prepare_node()
     run_dir = Path(tempfile.mkdtemp(prefix="brand-atlas-"))
     command = [node, str(ROOT / "src" / "cli.mjs"), website, "--output", str(run_dir),
-               "--max-pages", str(max_pages), "--no-pptx"]
+               "--max-pages", str(max_pages)]
+    xvfb = shutil.which("xvfb-run")
+    if xvfb:
+        command = [xvfb, "-a", *command, "--headed"]
     if urlsplit(website).hostname in {"premierpadel.com", "www.premierpadel.com"}:
         command.extend(["--overrides", str(ROOT / "examples" / "premier-padel-overrides.json")])
     environment = {**os.environ}
@@ -93,7 +101,7 @@ def run_scan(website: str, max_pages: int) -> tuple[dict, dict[str, bytes]]:
     )
     if completed.returncode:
         raise RuntimeError((completed.stdout + "\n" + completed.stderr).strip()[-5000:])
-    names = ["brand-atlas.zip", "brands.csv", "brands.json", "index.html"]
+    names = ["brand-atlas.zip", "brand-atlas.pptx", "brands.csv", "brands.json", "index.html"]
     files = {name: (run_dir / name).read_bytes() for name in names}
     manifest = json.loads(files["brands.json"])
     return manifest, files
@@ -139,11 +147,12 @@ if "result" in st.session_state:
         f'{coverage.get("pagesVisited", 0)} rendered pages. Coverage: {coverage.get("status", "unknown")}.</div>',
         unsafe_allow_html=True,
     )
-    buttons = st.columns(4)
+    buttons = st.columns(5)
     buttons[0].download_button("Download complete ZIP", files["brand-atlas.zip"], "brand-atlas.zip", "application/zip", use_container_width=True)
-    buttons[1].download_button("Download CSV", files["brands.csv"], "brands.csv", "text/csv", use_container_width=True)
-    buttons[2].download_button("Download JSON", files["brands.json"], "brands.json", "application/json", use_container_width=True)
-    buttons[3].download_button("Download HTML report", files["index.html"], "brand-report.html", "text/html", use_container_width=True)
+    buttons[1].download_button("Download PowerPoint", files["brand-atlas.pptx"], "brand-atlas.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True)
+    buttons[2].download_button("Download CSV", files["brands.csv"], "brands.csv", "text/csv", use_container_width=True)
+    buttons[3].download_button("Download JSON", files["brands.json"], "brands.json", "application/json", use_container_width=True)
+    buttons[4].download_button("Download HTML report", files["index.html"], "brand-report.html", "text/html", use_container_width=True)
     rows = as_csv_rows(files["brands.csv"])
     st.dataframe(rows, use_container_width=True, hide_index=True)
     if coverage.get("warnings"):

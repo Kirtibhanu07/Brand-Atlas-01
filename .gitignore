@@ -6,6 +6,7 @@ __pycache__/
 *.pyc
 *.zip
 .DS_Store
+.playwright-cli/
 eng.traineddata
 Brand-Atlas-Tool/
 Brand-Atlas-Python-HTML-Tool/
