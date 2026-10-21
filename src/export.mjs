@@ -5,6 +5,12 @@ import JSZip from "jszip";
 const esc = (v = "") => String(v).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const csvCell = (v = "") => { let s = String(v).replace(/\r?\n/g, " "); if (/^[=+\-@]/.test(s)) s = `'${s}`; return `"${s.replace(/"/g, '""')}"`; };
 
+function palette(manifest) {
+  return manifest.options?.background === "black"
+    ? { background: "000000", ink: "FFFFFF", muted: "CBD5E1", review: "FDBA74" }
+    : { background: "FFFFFF", ink: "101828", muted: "667085", review: "9A3412" };
+}
+
 async function asDataUrl(file) {
   if (!file) return "";
   try { const data = await fs.readFile(file); const ext = path.extname(file).slice(1).replace("jpg", "jpeg"); return `data:image/${ext};base64,${data.toString("base64")}`; } catch { return ""; }
@@ -17,6 +23,7 @@ function csv(manifest) {
 }
 
 async function html(manifest, outputDir) {
+  const theme = palette(manifest);
   const cards = [];
   for (const b of manifest.brands) {
     const logo = b.logos.find((l) => l.previewPath)?.previewPath || b.logos[0]?.path;
@@ -29,7 +36,7 @@ async function html(manifest, outputDir) {
     </article>`);
   }
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Brand Atlas</title><style>
-  :root{--ink:#101828;--muted:#667085;--gold:#b6893d;--paper:#f7f4ed}*{box-sizing:border-box}body{margin:0;font:15px/1.45 Inter,Arial,sans-serif;color:var(--ink);background:var(--paper)}header{padding:54px clamp(22px,5vw,76px) 32px;background:#111827;color:white}header small{letter-spacing:.18em;text-transform:uppercase;color:#d7b56d}h1{font-size:clamp(36px,6vw,68px);line-height:1;margin:12px 0}header p{max-width:780px;color:#d0d5dd}.bar{position:sticky;top:0;z-index:2;display:flex;gap:12px;padding:14px clamp(22px,5vw,76px);background:#fff;border-bottom:1px solid #e4dfd3}.bar input{flex:1;max-width:540px;padding:12px 14px;border:1px solid #ccc;border-radius:4px}.bar button{padding:10px 14px;border:1px solid #aaa;background:white;border-radius:4px}main{padding:34px clamp(22px,5vw,76px) 70px}.coverage{margin-bottom:30px;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:34px 26px}.brand{min-width:0}.mark{height:150px;display:grid;place-items:center;background:white;border:1px solid #e7e1d4}.mark img{max-width:82%;max-height:78%;object-fit:contain}.mark span{color:#98a2b3}.brand h2{margin:13px 0 4px;font-size:22px}.brand p{margin:0;color:var(--muted)}.meta{display:flex;gap:10px;margin:9px 0;color:var(--muted);font-size:12px}.meta b{color:#9a3412}.brand nav{display:flex;flex-wrap:wrap;gap:13px}.brand a{color:#7b571f}footer{padding:25px clamp(22px,5vw,76px);border-top:1px solid #ddd;color:var(--muted)}@media(max-width:560px){.bar{flex-wrap:wrap}.bar input{width:100%;flex-basis:100%}}
+  :root{--ink:#101828;--muted:#667085;--gold:#b6893d;--paper:#f7f4ed}*{box-sizing:border-box}body{margin:0;font:15px/1.45 Inter,Arial,sans-serif;color:var(--ink);background:var(--paper)}header{padding:54px clamp(22px,5vw,76px) 32px;background:#111827;color:white}header small{letter-spacing:.18em;text-transform:uppercase;color:#d7b56d}h1{font-size:clamp(36px,6vw,68px);line-height:1;margin:12px 0}header p{max-width:780px;color:#d0d5dd}.bar{position:sticky;top:0;z-index:2;display:flex;gap:12px;padding:14px clamp(22px,5vw,76px);background:#fff;border-bottom:1px solid #e4dfd3}.bar input{flex:1;max-width:540px;padding:12px 14px;border:1px solid #ccc;border-radius:4px}.bar button{padding:10px 14px;border:1px solid #aaa;background:white;border-radius:4px}main{padding:34px clamp(22px,5vw,76px) 70px}.coverage{margin-bottom:30px;color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:34px 26px}.brand{min-width:0}.mark{height:150px;display:grid;place-items:center;background:#${theme.background};border:1px solid #e7e1d4}.mark img{max-width:82%;max-height:78%;object-fit:contain}.mark span{color:#98a2b3}.brand h2{margin:13px 0 4px;font-size:22px}.brand p{margin:0;color:var(--muted)}.meta{display:flex;gap:10px;margin:9px 0;color:var(--muted);font-size:12px}.meta b{color:#9a3412}.brand nav{display:flex;flex-wrap:wrap;gap:13px}.brand a{color:#7b571f}footer{padding:25px clamp(22px,5vw,76px);border-top:1px solid #ddd;color:var(--muted)}@media(max-width:560px){.bar{flex-wrap:wrap}.bar input{width:100%;flex-basis:100%}}
   </style></head><body><header><small>Website evidence report</small><h1>Brand Atlas</h1><p>${esc(manifest.sourceUrl)}<br>Captured ${esc(manifest.finishedAt)}. This bounded crawl found ${manifest.brands.length} brand records across ${manifest.coverage.pagesVisited} pages.</p></header>
   <div class="bar"><input id="q" aria-label="Search brands" placeholder="Search brand, relationship, or section"><button id="all">All</button><button id="review">Needs review</button></div>
   <main><p class="coverage"><b>Coverage: ${esc(manifest.coverage.status)}</b> · ${esc(manifest.coverage.warnings.join(" ") || "No crawl warnings.")}</p><section class="grid">${cards.join("\n")}</section></main>
@@ -42,29 +49,30 @@ function addText(slide, text, position, style) {
 }
 
 async function writePptxWithArtifactTool(manifest, outputDir) {
+  const theme = palette(manifest);
   const { Presentation, PresentationFile } = await import("@oai/artifact-tool");
   const p = Presentation.create({ slideSize: { width: 1280, height: 720 } });
-  let slide = p.slides.add(); slide.background.fill = "#101828";
+  let slide = p.slides.add(); slide.background.fill = `#${theme.background}`;
   addText(slide, "BRAND ATLAS", {left:72,top:98,width:850,height:58}, {fontSize:18,bold:true,color:"#D7B56D",characterSpacing:3});
-  addText(slide, "Sponsors and partners\nfound on the website", {left:72,top:175,width:1000,height:190}, {fontSize:52,bold:true,color:"#FFFFFF"});
-  addText(slide, new URL(manifest.sourceUrl).hostname, {left:72,top:430,width:700,height:45}, {fontSize:24,color:"#D0D5DD"});
-  addText(slide, `${manifest.brands.length} records · ${manifest.coverage.pagesVisited} pages · ${manifest.coverage.status} crawl`, {left:72,top:610,width:900,height:28}, {fontSize:15,color:"#98A2B3"});
+  addText(slide, "Sponsors and partners\nfound on the website", {left:72,top:175,width:1000,height:190}, {fontSize:52,bold:true,color:`#${theme.ink}`});
+  addText(slide, new URL(manifest.sourceUrl).hostname, {left:72,top:430,width:700,height:45}, {fontSize:24,color:`#${theme.muted}`});
+  addText(slide, `${manifest.brands.length} records · ${manifest.coverage.pagesVisited} pages · ${manifest.coverage.status} crawl`, {left:72,top:610,width:900,height:28}, {fontSize:15,color:`#${theme.muted}`});
   slide.speakerNotes.textFrame.setText(`Source website: ${manifest.sourceUrl}\nCaptured: ${manifest.finishedAt}\nCoverage: ${manifest.coverage.status}`);
   const per = 8;
   for (let offset = 0; offset < manifest.brands.length; offset += per) {
-    slide = p.slides.add(); slide.background.fill = "#FFFFFF";
-    addText(slide, "Brand inventory", {left:54,top:28,width:780,height:48}, {fontSize:30,bold:true,color:"#101828"});
-    addText(slide, `${offset + 1}–${Math.min(offset + per, manifest.brands.length)} of ${manifest.brands.length}`, {left:980,top:39,width:240,height:30}, {fontSize:12,color:"#667085",alignment:"right"});
+    slide = p.slides.add(); slide.background.fill = `#${theme.background}`;
+    addText(slide, "Brand inventory", {left:54,top:28,width:780,height:48}, {fontSize:30,bold:true,color:`#${theme.ink}`});
+    addText(slide, `${offset + 1}–${Math.min(offset + per, manifest.brands.length)} of ${manifest.brands.length}`, {left:980,top:39,width:240,height:30}, {fontSize:12,color:`#${theme.muted}`,alignment:"right"});
     const group = manifest.brands.slice(offset, offset + per); const notes = [];
     for (let i = 0; i < group.length; i++) {
       const b = group[i], col = i % 4, row = Math.floor(i / 4); const left = 52 + col * 304, top = 105 + row * 190;
       const preview = b.logos.find((l) => l.previewPath)?.previewPath || b.logos[0]?.path;
       if (preview) { try { const bytes = await fs.readFile(path.join(outputDir, preview)); slide.images.add({ blob: new Uint8Array(bytes), contentType: "image/png", alt: `${b.name} logo`, fit: "contain", position: {left,top,width:250,height:104} }); } catch {} }
-      addText(slide, b.name, {left,top:top+118,width:250,height:28}, {fontSize:16,bold:true,color:"#101828",alignment:"center"});
-      addText(slide, `${b.relationship}${b.reviewRequired ? " · REVIEW" : ""}`, {left,top:top+148,width:250,height:30}, {fontSize:9,bold:b.reviewRequired,color:b.reviewRequired?"#9A3412":"#667085",alignment:"center"});
+      addText(slide, b.name, {left,top:top+118,width:250,height:28}, {fontSize:16,bold:true,color:`#${theme.ink}`,alignment:"center"});
+      addText(slide, `${b.relationship}${b.reviewRequired ? " · REVIEW" : ""}`, {left,top:top+148,width:250,height:30}, {fontSize:9,bold:b.reviewRequired,color:`#${b.reviewRequired ? theme.review : theme.muted}`,alignment:"center"});
       notes.push(`${b.name}\nSource: ${b.evidence[0]?.sourcePage || manifest.sourceUrl}\nLogo: ${b.logos[0]?.sourceUrl || "Unavailable"}`);
     }
-    addText(slide, "Names marked REVIEW need human confirmation before external use.", {left:54,top:680,width:850,height:18}, {fontSize:10,color:"#667085"});
+    addText(slide, "Names marked REVIEW need human confirmation before external use.", {left:54,top:680,width:850,height:18}, {fontSize:10,color:`#${theme.muted}`});
     slide.speakerNotes.textFrame.setText(notes.join("\n\n"));
   }
   const pptxPath = path.join(outputDir, "brand-atlas.pptx");
@@ -92,6 +100,7 @@ async function removeMissingContentTypeTargets(pptxPath) {
 }
 
 async function writePptxPortable(manifest, outputDir) {
+  const theme = palette(manifest);
   const { default: PptxGenJS } = await import("pptxgenjs");
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
@@ -103,19 +112,19 @@ async function writePptxPortable(manifest, outputDir) {
   pptx.theme = { headFontFace: "Arial", bodyFontFace: "Arial", lang: "en-US" };
 
   let slide = pptx.addSlide();
-  slide.background = { color: "101828" };
+  slide.background = { color: theme.background };
   slide.addText("BRAND ATLAS", {x:.75,y:1.05,w:8.8,h:.35,fontFace:"Arial",fontSize:13,bold:true,color:"D7B56D",charSpacing:3,margin:0});
-  slide.addText("Sponsors and partners\nfound on the website", {x:.75,y:1.78,w:10.8,h:1.85,fontFace:"Arial",fontSize:38,bold:true,color:"FFFFFF",breakLine:false,margin:0,fit:"shrink"});
-  slide.addText(new URL(manifest.sourceUrl).hostname, {x:.75,y:4.5,w:7.4,h:.45,fontFace:"Arial",fontSize:18,color:"D0D5DD",margin:0});
-  slide.addText(`${manifest.brands.length} records   ${manifest.coverage.pagesVisited} pages   ${manifest.coverage.status} crawl`, {x:.75,y:6.65,w:9.5,h:.25,fontFace:"Arial",fontSize:10,color:"98A2B3",margin:0});
+  slide.addText("Sponsors and partners\nfound on the website", {x:.75,y:1.78,w:10.8,h:1.85,fontFace:"Arial",fontSize:38,bold:true,color:theme.ink,breakLine:false,margin:0,fit:"shrink"});
+  slide.addText(new URL(manifest.sourceUrl).hostname, {x:.75,y:4.5,w:7.4,h:.45,fontFace:"Arial",fontSize:18,color:theme.muted,margin:0});
+  slide.addText(`${manifest.brands.length} records   ${manifest.coverage.pagesVisited} pages   ${manifest.coverage.status} crawl`, {x:.75,y:6.65,w:9.5,h:.25,fontFace:"Arial",fontSize:10,color:theme.muted,margin:0});
   slide.addNotes(`Source website: ${manifest.sourceUrl}\nCaptured: ${manifest.finishedAt}\nCoverage: ${manifest.coverage.status}`);
 
   const perSlide = 8;
   for (let offset = 0; offset < manifest.brands.length; offset += perSlide) {
     slide = pptx.addSlide();
-    slide.background = { color: "FFFFFF" };
-    slide.addText("Brand inventory", {x:.55,y:.3,w:8.2,h:.5,fontFace:"Arial",fontSize:24,bold:true,color:"101828",margin:0});
-    slide.addText(`${offset + 1}–${Math.min(offset + perSlide, manifest.brands.length)} of ${manifest.brands.length}`, {x:10.7,y:.4,w:2.0,h:.25,fontFace:"Arial",fontSize:9,color:"667085",align:"right",margin:0});
+    slide.background = { color: theme.background };
+    slide.addText("Brand inventory", {x:.55,y:.3,w:8.2,h:.5,fontFace:"Arial",fontSize:24,bold:true,color:theme.ink,margin:0});
+    slide.addText(`${offset + 1}–${Math.min(offset + perSlide, manifest.brands.length)} of ${manifest.brands.length}`, {x:10.7,y:.4,w:2.0,h:.25,fontFace:"Arial",fontSize:9,color:theme.muted,align:"right",margin:0});
     const group = manifest.brands.slice(offset, offset + perSlide); const notes = [];
     for (let index = 0; index < group.length; index++) {
       const brand = group[index], col = index % 4, row = Math.floor(index / 4);
@@ -125,11 +134,11 @@ async function writePptxPortable(manifest, outputDir) {
         const file = path.join(outputDir, logo.previewPath || logo.path);
         try { await fs.access(file); slide.addImage({path:file,...containBox(logo.width, logo.height, {x,y,w:2.62,h:1.35})}); } catch {}
       }
-      slide.addText(brand.name, {x,y:y+1.48,w:2.62,h:.35,fontFace:"Arial",fontSize:12,bold:true,color:"101828",align:"center",valign:"mid",fit:"shrink",margin:0});
-      slide.addText(`${brand.relationship}${brand.reviewRequired ? "   REVIEW" : ""}`, {x,y:y+1.88,w:2.62,h:.32,fontFace:"Arial",fontSize:8,bold:brand.reviewRequired,color:brand.reviewRequired?"9A3412":"667085",align:"center",fit:"shrink",margin:0});
+      slide.addText(brand.name, {x,y:y+1.48,w:2.62,h:.35,fontFace:"Arial",fontSize:12,bold:true,color:theme.ink,align:"center",valign:"mid",fit:"shrink",margin:0});
+      slide.addText(`${brand.relationship}${brand.reviewRequired ? "   REVIEW" : ""}`, {x,y:y+1.88,w:2.62,h:.32,fontFace:"Arial",fontSize:8,bold:brand.reviewRequired,color:brand.reviewRequired ? theme.review : theme.muted,align:"center",fit:"shrink",margin:0});
       notes.push(`${brand.name}\nSource: ${brand.evidence[0]?.sourcePage || manifest.sourceUrl}\nLogo: ${brand.logos[0]?.sourceUrl || "Unavailable"}`);
     }
-    slide.addText("Names marked REVIEW need human confirmation before external use.", {x:.55,y:7.15,w:8.8,h:.18,fontFace:"Arial",fontSize:7,color:"667085",margin:0});
+    slide.addText("Names marked REVIEW need human confirmation before external use.", {x:.55,y:7.15,w:8.8,h:.18,fontFace:"Arial",fontSize:7,color:theme.muted,margin:0});
     slide.addNotes(notes.join("\n\n"));
   }
   const pptxPath = path.join(outputDir, "brand-atlas.pptx");

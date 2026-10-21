@@ -1,6 +1,6 @@
 # Brand Atlas
 
-Brand Atlas accepts one public website URL and builds a reviewable inventory of the brands, sponsors, partners, organizers, and governing bodies displayed by that website. It uses the rendered page, so it can see logos loaded by JavaScript and lazy loading.
+Brand Atlas accepts one public website URL and builds a reviewable inventory of sponsors and partners evidenced by labeled commercial sections on that website. It uses the rendered page, so it can see logos loaded by JavaScript and lazy loading.
 
 The output folder contains:
 
@@ -21,6 +21,8 @@ npm install
 npx playwright install chromium
 npm start -- https://premierpadel.com/en/home-page --output output/premier-padel
 ```
+
+Both app interfaces ask you to choose a **white or black presentation background** before scanning. Choose black for white or light transparent logos and white for dark logos. The choice applies to every PowerPoint slide and the HTML gallery logo tiles; original logo files keep their transparency. The CLI defaults to white for compatibility; pass `--background black` to change it.
 
 Open `output/premier-padel/index.html` to review the results. Records marked `Review name` came from a linked domain or asset filename rather than explicit page text. Confirm those names before publishing the deck.
 
@@ -58,6 +60,7 @@ Useful options:
 
 ```text
 --max-pages 25    Increase the bounded internal-page crawl
+--background black  Use black slides and logo tiles (white is also supported)
 --overrides FILE  Apply reviewed names by SHA-256, source URL, or detected name
 --headed          Show the browser while it works
 --no-pptx         Skip PowerPoint creation
@@ -67,7 +70,7 @@ Useful options:
 
 ## How detection works
 
-The extractor searches regular and deferred images, inline SVG, embedded image objects, responsive `srcset` assets, data images, and CSS backgrounds. It recognizes English and Indonesian commercial labels such as partners, official sponsors, supported by, `mitra`, and `sponsor utama`. Labels may sit above, below, or beside a carousel or footer table. Social icons, navigation controls, flags, article thumbnails, and other common non-brand assets are removed.
+The extractor searches regular and deferred images, inline SVG, embedded image objects, responsive `srcset` assets, data images, and CSS backgrounds. It recognizes English and Indonesian commercial labels such as partners, official sponsors, supported by, `mitra`, and `sponsor utama`. Logos must belong to a sponsor/partner-marked container or a list immediately following a recognized commercial label. Genuine sponsor lists inside footers remain eligible. Generic footer images, owner marks, app badges, navigation, article images, and nearby unrelated sections are excluded; a filename or federation label alone is insufficient evidence. Labels above sibling carousels and deferred or hidden carousel images remain supported. Unlabeled or unusually structured sponsor lists may require a dedicated page or future extraction rules.
 
 The crawler uses a standard browser identity, follows `www` redirects as the same site, prioritizes discovered partnership and marketing links, and checks additional conventional paths. Streamlit runs Chromium through a virtual display, which helps sites that reject headless browsers. If Cloudflare or a broken client application still blocks access, the report records that limitation. It does not attempt to bypass the site's security controls.
 
@@ -95,3 +98,14 @@ python3 -m unittest tests/test_python_app.py
 ```
 
 The code is split into `network.mjs` for safe fetching, `extract.mjs` for evidence capture, `cli.mjs` for crawling and asset normalization, and `export.mjs` for reporting.
+
+## Sports website checks
+
+`examples/sports-sites.json` lists BWF, AFC, SPL (interpreted as Saudi Pro League), Premier Padel, Hong Kong Sevens, Singapore Sevens, ICC and IPL. Run an optional live extraction check with:
+
+```bash
+node scripts/check-sports.mjs
+# If needed: CHROMIUM_PATH=/path/to/chrome node scripts/check-sports.mjs
+```
+
+The check respects robots.txt, records page status, candidates and limitations in `output/sports-check.json`, and does not assert fixed sponsor counts. A blocked page or zero candidates is a coverage limitation, not proof that a website has no sponsors. Browser regression tests use stable fixtures covering genuine footer sponsor lists, unrelated footer assets, navigation links, neighboring news sections and hidden carousels.

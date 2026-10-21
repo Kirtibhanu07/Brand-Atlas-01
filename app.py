@@ -67,10 +67,10 @@ def update_job(job_id: str, **changes) -> None:
         JOBS[job_id].update(changes)
 
 
-def execute_job(job_id: str, website: str, max_pages: int) -> None:
+def execute_job(job_id: str, website: str, max_pages: int, background: str = "white") -> None:
     output = RUN_ROOT / job_id
     command = [node_executable(), str(ROOT / "src" / "cli.mjs"), website,
-               "--output", str(output), "--max-pages", str(max_pages)]
+               "--output", str(output), "--max-pages", str(max_pages), "--background", background]
     with RUN_LIMIT:
         update_job(job_id, status="running")
         try:
@@ -158,15 +158,18 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Invalid request size")
             body = json.loads(self.rfile.read(length))
             website = validate_website(body.get("website", ""))
+            background = body.get("background", "white")
+            if background not in ("white", "black"):
+                raise ValueError("Background must be white or black")
             max_pages = max(1, min(100, int(body.get("maxPages", 12))))
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             self.json_response(400, {"error": str(exc)})
             return
         job_id = str(uuid.uuid4())
-        job = {"id": job_id, "status": "queued", "website": website, "maxPages": max_pages}
+        job = {"id": job_id, "status": "queued", "website": website, "maxPages": max_pages, "background": background}
         with JOBS_LOCK:
             JOBS[job_id] = job
-        threading.Thread(target=execute_job, args=(job_id, website, max_pages), daemon=True).start()
+        threading.Thread(target=execute_job, args=(job_id, website, max_pages, background), daemon=True).start()
         self.json_response(202, job)
 
     def log_message(self, message: str, *args) -> None:

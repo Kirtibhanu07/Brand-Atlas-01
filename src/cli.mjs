@@ -10,17 +10,21 @@ import { exportReport } from "./export.mjs";
 import { mergeCandidates, slug } from "./records.mjs";
 
 function usage() {
-  return `Brand Atlas\n\nUsage:\n  node src/cli.mjs <website> [--output DIR] [--max-pages N] [--overrides FILE] [--headed] [--no-pptx] [--no-zip] [--ignore-robots]\n\nExample:\n  node src/cli.mjs https://premierpadel.com/en/home-page --output output/premier-padel`;
+  return `Brand Atlas\n\nUsage:\n  node src/cli.mjs <website> [--output DIR] [--max-pages N] [--overrides FILE] [--background white|black] [--headed] [--no-pptx] [--no-zip] [--ignore-robots]\n\nExample:\n  node src/cli.mjs https://premierpadel.com/en/home-page --output output/premier-padel`;
 }
 
 export function parseArgs(argv) {
-  const args = { url: "", output: "", overrides: "", maxPages: 12, headed: false, pptx: true, zip: true, respectRobots: true };
+  const args = { url: "", output: "", overrides: "", maxPages: 12, background: "white", headed: false, pptx: true, zip: true, respectRobots: true };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith("-") && !args.url) args.url = a;
     else if (a === "--output") args.output = argv[++i] || "";
     else if (a === "--max-pages") args.maxPages = Math.max(1, Math.min(100, Number(argv[++i]) || 12));
     else if (a === "--overrides") args.overrides = argv[++i] || "";
+    else if (a === "--background") {
+      args.background = argv[++i];
+      if (!["white", "black"].includes(args.background)) throw new Error("Background must be white or black");
+    }
     else if (a === "--headed") args.headed = true;
     else if (a === "--no-pptx") args.pptx = false;
     else if (a === "--no-zip") args.zip = false;
@@ -148,7 +152,7 @@ export async function run(options) {
   const brands = mergeCandidates(reviewed);
   if (!brands.length) uniqueWarnings.push("No sponsor or partner logo assets were found in the rendered pages. The site may not publish an inventory or may block automated access.");
   const reportWarnings = brands.some((b) => b.reviewRequired) ? uniqueWarnings : uniqueWarnings.filter((w) => !w.includes("Some names were inferred"));
-  const manifest = { schemaVersion:"1.0", sourceUrl:root, startedAt, finishedAt:new Date().toISOString(), options:{maxPages:options.maxPages,respectRobots:options.respectRobots,overrides:options.overrides || null}, coverage:{status:queue.length ? "bounded" : reportWarnings.some((w) => /could not|error|timeout|blocked/i.test(w)) ? "partial" : "bounded",pagesVisited:pages.length,pagesDiscovered:seen.size+queue.length,limitReached:seen.size>=options.maxPages&&queue.length>0,warnings:reportWarnings}, pages, brands };
+  const manifest = { schemaVersion:"1.0", sourceUrl:root, startedAt, finishedAt:new Date().toISOString(), options:{background:options.background || "white",maxPages:options.maxPages,respectRobots:options.respectRobots,overrides:options.overrides || null}, coverage:{status:queue.length ? "bounded" : reportWarnings.some((w) => /could not|error|timeout|blocked/i.test(w)) ? "partial" : "bounded",pagesVisited:pages.length,pagesDiscovered:seen.size+queue.length,limitReached:seen.size>=options.maxPages&&queue.length>0,warnings:reportWarnings}, pages, brands };
   const files = await exportReport(manifest, outputDir, {pptx:options.pptx,zip:options.zip});
   return { manifest, outputDir, files };
 }
