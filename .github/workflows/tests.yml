@@ -15,10 +15,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: npm install --omit=optional --no-audit --no-fund
+      - run: npm install --include=optional --no-audit --no-fund
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       - run: npx playwright install --with-deps chromium
       - run: npm test
+        env:
+          BRAND_ATLAS_PPTX_ENGINE: portable
       - run: python -m unittest tests/test_python_app.py
       - run: python -m py_compile app.py streamlit_app.py
