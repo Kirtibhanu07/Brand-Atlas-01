@@ -37,3 +37,29 @@ test("extracts lazy and hidden carousel logos when the sponsor label is a siblin
   assert.equal(result.candidates[0].sourceUrl, "https://cdn.example/akeo.png");
   assert.equal(result.candidates[0].relationship, "Sponsor");
 });
+
+
+test("footer sponsor evidence does not spread to owner, utility, app or provider marks", async (t) => {
+  let browser;
+  try { browser = await chromium.launch({headless:true}); }
+  catch { try { browser = await chromium.launch({headless:true, executablePath:"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}); } catch { return t.skip("Chromium is not installed"); } }
+  try {
+    const page = await browser.newPage();
+    const img = (name) => `<img alt="${name}" src="https://cdn.example/${name}.png" width="160" height="60">`;
+    await page.setContent(`<header>${img('League')}</header>
+      <main><section><h2>News</h2>${img('Story')}</section>
+      <a aria-label="Highlights | Powered by Toyota">${img('Match photo')}<svg width="20" height="20"></svg></a></main>
+      <footer>${img('Owner')}<nav><a href="/partners">Partners</a>${img('Navigation')}</nav>
+      <section class="official-partners"><div class="image-callout">${img('Sponsors')}</div><h2>Official partners</h2><div>${img('Acme')}${img('Lightmark')}</div></section>
+      <div>${img('Provider')}</div><div class="footer__bottom"><div class="title-sponsors">${img('Owner Composite')}</div></div><div><h3>Get our app</h3>${img('App Store')}</div>
+      <div class="federation">${img('Federation')}</div></footer>`);
+    let out = await extractPage(page);
+    assert.deepEqual(out.candidates.map(c => c.name).sort(), ['Acme', 'Lightmark']);
+    await page.setContent(`<footer>${img('Owner')}<h2>Official sponsors</h2><ul><li>${img('Acme')}</li></ul><div>${img('Provider')}</div><h3>Follow us</h3>${img('Social')}</footer>`);
+    out = await extractPage(page);
+    assert.deepEqual(out.candidates.map(c => c.name), ['Acme']);
+    await page.setContent(`<main><section><h2>Partners</h2><div>${img('Acme')}</div><h2>Latest news</h2>${img('Story')}</section><div>${img('Provider')}</div></main>`);
+    out = await extractPage(page);
+    assert.deepEqual(out.candidates.map(c => c.name), ['Acme']);
+  } finally { await browser.close(); }
+});

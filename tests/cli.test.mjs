@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { parseArgs } from "../src/cli.mjs";
 import { mergeCandidates } from "../src/records.mjs";
 
 const record = (name, confidence, reviewRequired, sha256) => ({
@@ -27,4 +28,11 @@ test("deduplicates one logo asset and keeps the strongest brand name", () => {
   assert.equal(brands[0].reviewRequired, false);
   assert.equal(brands[0].logos.length, 1);
   assert.equal(brands[0].evidence.length, 2);
+});
+
+
+test("accepts only white or black presentation backgrounds", () => {
+  assert.equal(parseArgs(['https://example.com']).background, 'white');
+  assert.equal(parseArgs(['https://example.com', '--background', 'black']).background, 'black');
+  for (const value of ['red', undefined]) assert.throws(() => parseArgs(['https://example.com', '--background', ...[value].filter(Boolean)]), /Background must/);
 });

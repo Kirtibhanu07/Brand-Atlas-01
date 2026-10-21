@@ -80,11 +80,13 @@ def prepare_node() -> str:
     return node
 
 
-def run_scan(website: str, max_pages: int) -> tuple[dict, dict[str, bytes]]:
+def run_scan(website: str, max_pages: int, background: str = "white") -> tuple[dict, dict[str, bytes]]:
+    if background not in ("white", "black"):
+        raise ValueError("Background must be white or black")
     node = prepare_node()
     run_dir = Path(tempfile.mkdtemp(prefix="brand-atlas-"))
     command = [node, str(ROOT / "src" / "cli.mjs"), website, "--output", str(run_dir),
-               "--max-pages", str(max_pages)]
+               "--max-pages", str(max_pages), "--background", background]
     xvfb = shutil.which("xvfb-run")
     if xvfb:
         command = [xvfb, "-a", *command, "--headed"]
@@ -128,13 +130,16 @@ with st.form("scan"):
     left, right = st.columns([4, 1])
     website = left.text_input("Website URL", value="https://premierpadel.com/en/home-page")
     max_pages = right.number_input("Maximum pages", min_value=1, max_value=30, value=12)
+    background = st.radio("Presentation background", ["white", "black"], horizontal=True,
+                          format_func=str.title, index=1,
+                          help="Choose black for white or light transparent logos, or white for dark logos. Also used in the HTML logo gallery.")
     submitted = st.form_submit_button("Collect brands and logos", type="primary", use_container_width=True)
 
 if submitted:
     try:
         website = valid_website(website)
         with st.spinner("Rendering pages, finding brand sections, and preserving logo files…"):
-            manifest, files = run_scan(website, int(max_pages))
+            manifest, files = run_scan(website, int(max_pages), background)
         st.session_state["result"] = (manifest, files)
     except Exception as exc:
         st.error(str(exc))

@@ -44,8 +44,9 @@ export function inferName(meta) {
 
 export async function extractPage(page) {
   const raw = await page.evaluate(() => {
-    const cue = /\b(partners?|partnerships?|sponsors?|sponsored by|supported by|powered by|presented by|official supplier|technical partner|apparel partner|organisers?|organizers?|federation|associations?|clients?|supporters?|commercial|marketing|mitra|kemitraan|sponsor utama|sponsor resmi|partner resmi|didukung|dipersembahkan)\b/i;
-    const sectionCue = /^(?:(?:our|tour|brand|corporate|official|main|supporting|technical|commercial|strategic|apparel)\s+)*(?:partners?|sponsors?|suppliers?|supporters?|clients?|mitra)(?:\s+\d{4}(?:\s*[/–-]\s*\d{2,4})?)?$|^(?:sponsored|supported|powered|presented|didukung|dipersembahkan)\s+by$/i;
+    // Commercial evidence only: a federation name or generic footer is not a sponsor list.
+    const cue = /(?:^|[^a-z])(?:partners?|partnerships?|sponsors?|suppliers?|supporters?|mitra)(?=$|[^a-z])|sponsored by|supported by|powered by|presented by|didukung|dipersembahkan/i;
+    const sectionCue = /^(?:(?:our|tour|brand|corporate|official|main|supporting|technical|commercial|strategic|apparel|title|global|principal|premium|associate|community|event|broadcast|media|digital|equipment|automotive|banking|food|and|&|sponsors?|partners?)\s+)*(?:partners?|sponsors?|suppliers?|supporters?|mitra)(?:\s+\d{4}(?:\s*[/–-]\s*\d{2,4})?)?$|^(?:sponsored|supported|powered|presented)\s+by$|^(?:didukung|dipersembahkan)$/i;
     const exclude = /\b(header|qr(?:\s*code)?|icon|arrow|caret|chevron|search|menu|close|play|ticket|watch|facebook|instagram|youtube|linkedin|tiktok|twitter|avatar|thumbnail|flag|frame|placeholder|spacer)\b/i;
     const visible = (el) => { const s = getComputedStyle(el); const r = el.getBoundingClientRect(); return s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) !== 0 && r.width >= 12 && r.height >= 8; };
     const directText = (el) => [...el.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE).map((n) => n.textContent || "").join(" ").replace(/\s+/g, " ").trim();
@@ -55,26 +56,45 @@ export async function extractPage(page) {
       const text = directText(el) || (/^H[1-6]$/.test(el.tagName) || el.getAttribute?.("role") === "heading" ? (el.textContent || "").trim() : "");
       return text.length > 0 && text.length <= 100 && sectionCue.test(text);
     });
-    const cueNodes = allElements.filter((el) => {
-      const marker = `${el.id || ""} ${typeof el.className === "string" ? el.className : ""} ${el.getAttribute?.("aria-label") || ""}`;
-      const text = directText(el) || (/^H[1-6]$/.test(el.tagName) || el.getAttribute?.("role") === "heading" ? (el.textContent || "").trim() : "");
-      return cue.test(marker) || (text.length > 0 && text.length <= 100 && sectionCue.test(text));
-    });
+    const markerFor = (node) => `${node.id || ""} ${typeof node.className === "string" ? node.className : ""} ${node.getAttribute?.("aria-label") || ""}`;
+    const blockedRegion = 'header,nav,[role="navigation"],[role="banner"],article,[role="dialog"],[class*="footer__bottom"],[class*="footer-bottom"],[class*="navbar"],[class*="newsletter"]';
     const partnerScope = (el) => {
-      let node = el;
-      for (let depth = 0; node && depth < 11; depth++, node = node.parentElement) {
-        const marker = `${node.id || ""} ${typeof node.className === "string" ? node.className : ""} ${node.getAttribute?.("aria-label") || ""}`;
-        const mediaCount = node.querySelectorAll?.("img,svg,object")?.length || 0;
-        const localContainer = ![document.body, document.documentElement].includes(node) && mediaCount <= 32;
-        const nearest = (items) => items.filter((candidate) => node.contains(candidate) && Math.abs((documentOrder.get(candidate) || 0) - (documentOrder.get(el) || 0)) <= 60).sort((a, b) => Math.abs((documentOrder.get(a) || 0) - (documentOrder.get(el) || 0)) - Math.abs((documentOrder.get(b) || 0) - (documentOrder.get(el) || 0)))[0];
-        const h = localContainer ? nearest(sectionLabels) : null;
-        const marked = localContainer ? nearest(cueNodes) : null;
-        if ((localContainer && cue.test(marker)) || h || marked) {
-          const exactLabel = h ? (directText(h) || h.textContent || "").trim() : "";
-          const markedText = marked ? `${marked.id || ""} ${typeof marked.className === "string" ? marked.className : ""} ${marked.getAttribute?.("aria-label") || ""}` : "";
-          const label = exactLabel || markedText.match(cue)?.[0] || marker.match(cue)?.[0] || "Brand mark";
-          return { node, heading: label.replace(/\b\w/g, (c) => c.toUpperCase()) };
+      if (el.closest(blockedRegion)) return null;
+      for (let node = el, depth = 0; node && depth < 11; node = node.parentElement, depth++) {
+        if ([document.body, document.documentElement].includes(node)) break;
+        const marker = markerFor(node);
+        const footerRoot = node.matches('footer,[role="contentinfo"]');
+        // Never spread a descendant's class (e.g. partners-link) to its siblings.
+        if (!footerRoot && (cue.test(`${node.id || ""} ${typeof node.className === "string" ? node.className : ""}`) || sectionCue.test(node.getAttribute("aria-label") || ""))) {
+          const label = sectionLabels.filter((label) => node.contains(label) && !label.closest(blockedRegion) && documentOrder.get(label) < documentOrder.get(el)).at(-1);
+          return { node, heading: label ? (directText(label) || label.textContent || '').trim() : marker.match(cue)[0].replace(/^[^a-z]+/i, '').trim() };
         }
+        const labels = sectionLabels.filter((label) => node.contains(label) &&
+          !label.closest(blockedRegion) && documentOrder.get(label) < documentOrder.get(el));
+        for (const label of labels.reverse()) {
+          // A heading owns the following list only until the next unrelated heading.
+          const intervening = allElements.some((other) => node.contains(other) &&
+            (/^H[1-6]$/.test(other.tagName) || other.getAttribute('role') === 'heading') &&
+            documentOrder.get(other) > documentOrder.get(label) &&
+            documentOrder.get(other) < documentOrder.get(el) && !label.contains(other) &&
+            !sectionLabels.includes(other));
+          if (intervening) continue;
+          let branch = el;
+          while (branch.parentElement && branch.parentElement !== node) branch = branch.parentElement;
+          let labelBranch = label;
+          while (labelBranch.parentElement && labelBranch.parentElement !== node) labelBranch = labelBranch.parentElement;
+          if (labelBranch !== branch) {
+            let sibling = labelBranch.nextElementSibling;
+            while (sibling && sibling !== branch && sibling.matches('a,img,svg,object')) sibling = sibling.nextElementSibling;
+            if (sibling !== branch) continue;
+          }
+          // On broad wrappers/footer roots, only list-like branches qualify.
+          if ((footerRoot || node.matches('main,[role="main"]')) &&
+              !branch.matches('ul,ol,section,[role="list"]') && !cue.test(markerFor(branch))) continue;
+          if (node.querySelectorAll('img,svg,object').length > 64) continue;
+          return { node, heading: (directText(label) || label.textContent || '').trim() };
+        }
+        if (footerRoot) break;
       }
       return null;
     };
@@ -86,8 +106,19 @@ export async function extractPage(page) {
     const items = [];
     const add = (el, src, kind, inlineSvg = "") => {
       const anchor = el.closest("a[href]"); const context = contextFor(el); const alt = el.getAttribute("alt") || ""; const scope = partnerScope(el); const footer = el.closest("footer");
-      const footerLogo = footer && ["IMG", "OBJECT", "SVG"].includes(el.tagName) && (alt || anchor?.href || /logo/i.test(src));
-      const relevant = Boolean(scope || footerLogo || /(?:^|[/_-])(sponsor|partner|mitra|brand)(?:[/_.-]|$)/i.test(src) || /(?:\b(?:sponsor|partner|federation|mitra)\b.*\blogo\b|\blogo\b.*\b(?:sponsor|partner|federation|mitra)\b)/i.test(alt));
+      // A link back to this site's home page identifies its own brand, not a sponsor.
+      let ownerLink = false;
+      try {
+        const target = new URL(anchor?.href || "");
+        ownerLink = target.hostname.replace(/^www\./, '') === location.hostname.replace(/^www\./, '') &&
+          /^\/(?:[a-z]{2}\/?)?(?:home(?:-page)?\/?)?$/i.test(target.pathname);
+      } catch {}
+      let decorative = false;
+      for (let node = el; node; node = node.parentElement) {
+        if (/(?:^|[\s_-])(?:hero|banner|image-callout|news|article|teaser|thumbnail|video)(?=$|[\s_-])/i.test(typeof node.className === "string" ? node.className : "")) decorative = true;
+        if (node === scope?.node) break;
+      }
+      const relevant = Boolean(scope) && !ownerLink && !decorative;
       const storedAsset = Boolean(src || inlineSvg);
       if (!relevant || exclude.test(`${alt} ${src}`) || (!visible(el) && !(scope && storedAsset))) return;
       let description = ""; let parent = el.parentElement;
