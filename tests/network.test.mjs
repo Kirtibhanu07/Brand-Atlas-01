@@ -22,3 +22,11 @@ test("robots applies longest matching rule and crawl delay", () => {
   assert.equal(rules.crawlDelayMs, 2000);
   assert.deepEqual(rules.sitemaps, ["https://example.com/sitemap.xml"]);
 });
+
+test('robots shares rules across consecutive user agents and respects the most specific group',()=>{
+ const r=parseRobots('User-agent: BrandAtlas\nUser-agent: AnotherBot\nDisallow: /private\nAllow: /private/partners\nCrawl-delay: 7\nUser-agent: *\nDisallow: /');
+ assert.equal(r.isAllowed('https://event.example/public'),true);
+ assert.equal(r.isAllowed('https://event.example/private/file'),false);
+ assert.equal(r.isAllowed('https://event.example/private/partners'),true);
+ assert.equal(r.crawlDelayMs,7000);
+});

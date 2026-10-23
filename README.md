@@ -60,6 +60,7 @@ Useful options:
 
 ```text
 --max-pages 25    Increase the bounded internal-page crawl
+--site-timeout 180  Limit time spent rendering one website (seconds)
 --background black  Use black slides and logo tiles (white is also supported)
 --overrides FILE  Apply reviewed names by SHA-256, source URL, or detected name
 --headed          Show the browser while it works
@@ -94,18 +95,41 @@ Website text is treated only as content. It never becomes an instruction to the 
 
 ```bash
 npm test
-python3 -m unittest tests/test_python_app.py
+pip install -r requirements.txt
+python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
 The code is split into `network.mjs` for safe fetching, `extract.mjs` for evidence capture, `cli.mjs` for crawling and asset normalization, and `export.mjs` for reporting.
 
-## Sports website checks
+## Sports catalog and batch scanning
 
-`examples/sports-sites.json` lists BWF, AFC, SPL (interpreted as Saudi Pro League), Premier Padel, Hong Kong Sevens, Singapore Sevens, ICC and IPL. Run an optional live extraction check with:
+The app includes **72 events, leagues and tours across 14 sports** in `data/sports-events.json`. The catalog is a starting list of official public websites, not a promise that every sponsor list is accessible. The deployed interface has an event picker, a searchable catalog with the last recorded check, and batch scans of up to 12 events. A custom URL remains available.
 
 ```bash
-node scripts/check-sports.mjs
-# If needed: CHROMIUM_PATH=/path/to/chrome node scripts/check-sports.mjs
+# All catalog websites: evidence, original logos, PNG previews, HTML, JSON and CSV per event
+npm run batch -- --output output/sports-batch --concurrency 2 --max-pages 3
+
+# A focused batch, with PowerPoint for each selected event
+npm run batch -- --ids indian-premier-league,premier-padel --pptx --background black
 ```
 
-The check respects robots.txt, records page status, candidates and limitations in `output/sports-check.json`, and does not assert fixed sponsor counts. A blocked page or zero candidates is a coverage limitation, not proof that a website has no sponsors. Browser regression tests use stable fixtures covering genuine footer sponsor lists, unrelated footer assets, navigation links, neighboring news sections and hidden carousels.
+The batch output includes `coverage.csv`, `coverage.json` and `coverage.md`. Every site has a separate outcome and output folder. Reports are checkpointed after each site so a partial run can be reviewed. Batch scans use the same crawler, extractor and downloader as single-site scans. Cloud batch downloads contain portable reports; use a single scan for the complete original-logo ZIP and PowerPoint. The command-line batch preserves original logos for every event.
+
+The **Live sports website validation** GitHub Actions workflow can be run manually for the entire catalog or selected IDs. It uploads the resulting evidence and reports as a seven-day artifact. Live scans do not run on every push: ordinary CI uses deterministic fixtures and app interaction tests.
+
+See [`docs/sports-validation.md`](docs/sports-validation.md) and [`data/validation-summary.json`](data/validation-summary.json) for the recorded live-check results. These are dated observations and do not update automatically.
+
+## Extraction and failure handling
+
+- Rendered pages, bounded scrolling, lazy image attributes, responsive images and picture sources.
+- Labeled sponsor sections, recognized container markers and dedicated partner directories.
+- English, French, Spanish, German, Indonesian, Japanese and Chinese section labels.
+- Inline SVG, local SVG symbol references, image objects, CSS backgrounds and cropped sprite-sheet logos.
+- Open shadow DOM and loaded same-site iframe sections; closed shadow roots and third-party widgets are not guaranteed.
+- Original assets plus valid PNG previews; generic metadata and unknown names are marked for review instead of trusted blindly.
+- Duplicate logo downloads are avoided; separate sprite crops and unnamed logos retain their own identity.
+- Transient requests get bounded retries. Blocks and rate limits do not trigger repeated probing. Robots rules, including per-agent groups and crawl delays, are respected.
+- Per-site and per-download budgets, limited workers, image size limits, bounded decompression, temporary-folder cleanup and subprocess-group termination.
+- Invalid HTML responses and tracking pixels are rejected as logos. Missing downloads retain their evidence with an `unavailable` status. Optional PowerPoint failure preserves the other reports.
+
+Outcomes include `found`, `no_evidence`, `assets_unavailable`, `blocked`, `rate_limited`, `robots_disallowed`, `robots_unavailable`, `parked_domain`, `timeout`, and network/browser failures. `found` means at least one logo was saved, **not** that all sponsors were found or every name was verified. A website can still require human review, a more specific sponsor page, or a future extraction rule. The tool does not bypass CAPTCHAs, access controls or robots restrictions.

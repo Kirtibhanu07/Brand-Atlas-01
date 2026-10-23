@@ -1,0 +1,73 @@
+name,sport,url,outcome,brands,downloadedLogos,unavailableLogos,reviewRequired,pagesVisited,checkedAt
+Indian Premier League,Cricket,https://www.iplt20.com/,found,8,8,0,5,1,2026-10-23T05:52:16.951Z
+ICC Cricket World Cup,Cricket,https://www.icc-cricket.com/tournaments/cricketworldcup,found,24,24,0,0,1,2026-10-23T05:52:16.628Z
+Women's Premier League,Cricket,https://www.wplt20.com/,found,10,10,0,0,1,2026-10-23T05:52:17.197Z
+Big Bash League,Cricket,https://www.cricket.com.au/big-bash,found,16,16,0,1,1,2026-10-23T05:52:19.548Z
+SA20,Cricket,https://www.sa20.co.za/,found,23,34,0,0,3,2026-10-23T05:52:32.326Z
+Pakistan Super League,Cricket,https://www.psl-t20.com/,found,1,1,0,1,1,2026-10-23T05:52:26.959Z
+International League T20,Cricket,https://www.ilt20.ae/,found,13,13,0,0,1,2026-10-23T05:52:22.390Z
+Caribbean Premier League,Cricket,https://www.cplt20.com/,found,32,32,0,31,1,2026-10-23T05:52:30.999Z
+The Hundred,Cricket,https://www.thehundred.com/,found,10,10,0,1,1,2026-10-23T06:01:47.707Z
+FIFA World Cup,Football,https://www.fifa.com/en/tournaments/mens/worldcup,robots_disallowed,0,0,0,0,3,2026-10-23T05:52:39.252Z
+UEFA Champions League,Football,https://www.uefa.com/uefachampionsleague/,found,13,13,0,3,1,2026-10-23T06:01:47.848Z
+UEFA European Championship,Football,https://www.uefa.com/uefaeuro/,found,10,10,0,0,1,2026-10-23T05:52:39.909Z
+Premier League,Football,https://www.premierleague.com/,found,11,11,0,0,3,2026-10-23T05:52:44.671Z
+LaLiga,Football,https://www.laliga.com/en-GB,found,15,27,1,1,2,2026-10-23T05:53:46.341Z
+Bundesliga,Football,https://www.bundesliga.com/en/bundesliga,found,7,14,0,0,3,2026-10-23T05:52:47.638Z
+Serie A,Football,https://en.legaseriea.it/,found,20,33,0,0,3,2026-10-23T06:01:59.991Z
+Ligue 1,Football,https://ligue1.com/,found,9,9,0,0,2,2026-10-23T05:53:08.348Z
+Major League Soccer,Football,https://www.mlssoccer.com/,no_evidence,0,0,0,0,3,2026-10-23T05:58:38.493Z
+Saudi Pro League,Football,https://www.spl.com.sa/en,found,11,11,0,0,1,2026-10-23T05:53:02.594Z
+AFC Asian Cup,Football,https://www.the-afc.com/,no_evidence,0,0,0,0,3,2026-10-23T05:53:12.850Z
+Copa America,Football,https://copaamerica.com/en/,no_evidence,0,0,0,0,3,2026-10-23T05:53:14.379Z
+Hong Kong Sevens,Rugby,https://hksevens.com/about-us/sponsors,found,31,32,0,0,2,2026-10-23T05:53:25.143Z
+Singapore Sevens,Rugby,https://www.svns.com/en/events/singapore/,no_evidence,0,0,0,0,3,2026-10-23T06:01:54.713Z
+Dubai Rugby Sevens,Rugby,https://dubairugby7s.com/,robots_unavailable,0,0,0,0,1,2026-10-23T05:53:19.530Z
+Six Nations,Rugby,https://www.sixnationsrugby.com/,found,8,11,0,0,1,2026-10-23T05:53:24.609Z
+Rugby World Cup,Rugby,https://www.rugbyworldcup.com/,no_evidence,0,0,0,0,3,2026-10-23T05:53:29.651Z
+Premiership Rugby,Rugby,https://www.premiershiprugby.com/,found,1,1,0,0,1,2026-10-23T05:53:31.720Z
+United Rugby Championship,Rugby,https://www.unitedrugby.com/,found,12,12,0,10,1,2026-10-23T05:53:33.562Z
+European Champions Cup,Rugby,https://www.epcrugby.com/,found,11,11,0,11,2,2026-10-23T05:58:35.308Z
+BWF World Tour,Badminton,https://bwfworldtour.bwfbadminton.com/,blocked,0,0,0,0,1,2026-10-23T05:53:34.429Z
+All England Open,Badminton,https://www.allenglandbadminton.com/,found,7,7,0,3,2,2026-10-23T05:58:41.980Z
+BWF World Championships,Badminton,https://bwfbadminton.com/,blocked,0,0,0,0,1,2026-10-23T05:53:40.276Z
+Wimbledon,Tennis,https://www.wimbledon.com/,network_error,0,0,0,0,1,2026-10-23T05:54:54.741Z
+Roland Garros,Tennis,https://www.rolandgarros.com/,found,24,24,0,24,2,2026-10-23T05:53:47.618Z
+US Open Tennis,Tennis,https://www.usopen.org/,network_error,0,0,0,0,1,2026-10-23T05:55:01.374Z
+Australian Open,Tennis,https://ausopen.com/,found,70,76,0,67,3,2026-10-23T05:53:56.444Z
+ATP Tour,Tennis,https://www.atptour.com/,blocked,0,0,0,0,1,2026-10-23T05:53:56.765Z
+WTA Tour,Tennis,https://www.wtatennis.com/,found,2,3,0,0,2,2026-10-23T05:54:04.325Z
+Laver Cup,Tennis,https://lavercup.com/,found,25,25,0,25,2,2026-10-23T05:54:11.937Z
+Davis Cup,Tennis,https://www.daviscup.com/,found,8,8,0,0,1,2026-10-23T05:54:15.598Z
+Billie Jean King Cup,Tennis,https://www.billiejeankingcup.com/,found,7,7,0,0,1,2026-10-23T05:54:19.358Z
+The Masters,Golf,https://www.masters.com/,network_error,0,0,0,0,1,2026-10-23T05:55:34.379Z
+The Open,Golf,https://www.theopen.com/,found,10,10,0,0,2,2026-10-23T05:55:02.434Z
+Ryder Cup,Golf,https://www.rydercup.com/,blocked,0,0,0,0,1,2026-10-23T05:55:03.778Z
+PGA Tour,Golf,https://www.pgatour.com/,blocked,0,0,0,0,1,2026-10-23T05:55:03.292Z
+LIV Golf,Golf,https://www.livgolf.com/,found,6,6,0,0,2,2026-10-23T05:55:11.407Z
+LPGA Tour,Golf,https://www.lpga.com/,found,2,2,0,0,3,2026-10-23T05:55:18.722Z
+Formula 1,Motorsport,https://www.formula1.com/,found,31,31,0,1,2,2026-10-23T05:55:18.379Z
+MotoGP,Motorsport,https://www.motogp.com/,found,48,48,7,7,3,2026-10-23T05:55:27.699Z
+Formula E,Motorsport,https://www.fiaformulae.com/,found,21,21,0,0,3,2026-10-23T05:55:28.412Z
+World Endurance Championship,Motorsport,https://www.fiawec.com/,found,13,13,0,2,3,2026-10-23T05:55:41.749Z
+World Rally Championship,Motorsport,https://www.wrc.com/,found,9,10,0,0,2,2026-10-23T05:55:36.398Z
+IndyCar,Motorsport,https://www.indycar.com/,found,51,120,13,1,2,2026-10-23T05:55:47.735Z
+NASCAR Cup Series,Motorsport,https://www.nascar.com/,robots_unavailable,0,0,0,0,1,2026-10-23T05:55:36.482Z
+Tour de France,Cycling,https://www.letour.fr/en/,found,64,62,2,3,3,2026-10-23T05:55:45.821Z
+Giro d'Italia,Cycling,https://www.giroditalia.it/en/,found,75,75,0,0,1,2026-10-23T05:55:53.032Z
+La Vuelta,Cycling,https://www.lavuelta.es/en/,found,64,61,3,2,3,2026-10-23T05:56:02.031Z
+Diamond League,Athletics,https://www.diamondleague.com/,found,6,7,0,4,2,2026-10-23T05:56:01.302Z
+World Athletics Championships,Athletics,https://worldathletics.org/,no_evidence,0,0,0,0,2,2026-10-23T05:55:59.011Z
+London Marathon,Running,https://www.londonmarathonevents.co.uk/london-marathon,found,18,18,0,17,3,2026-10-23T05:56:10.212Z
+Boston Marathon,Running,https://www.baa.org/,found,25,25,0,2,3,2026-10-23T05:56:10.109Z
+New York City Marathon,Running,https://www.nyrr.org/tcsnycmarathon,robots_unavailable,0,0,0,0,1,2026-10-23T05:56:03.342Z
+Berlin Marathon,Running,https://www.bmw-berlin-marathon.com/en/,found,27,28,0,0,3,2026-10-23T06:02:10.487Z
+Chicago Marathon,Running,https://www.chicagomarathon.com/,found,51,50,1,0,2,2026-10-23T06:02:09.242Z
+Tokyo Marathon,Running,https://www.marathon.tokyo/en/,robots_unavailable,0,0,0,0,1,2026-10-23T05:56:10.311Z
+Premier Padel,Padel,https://premierpadel.com/en,found,12,12,0,12,2,2026-10-23T05:56:18.564Z
+World Padel League,Padel,https://www.wplworld.com/,found,25,25,0,0,1,2026-10-23T05:56:20.663Z
+Olympic Games,Multi-sport,https://www.olympics.com/en/,network_error,0,0,0,0,1,2026-10-23T05:57:31.505Z
+Commonwealth Games,Multi-sport,https://www.commonwealthsport.com/,found,28,29,0,0,3,2026-10-23T05:56:31.138Z
+NBA,Basketball,https://www.nba.com/,blocked,0,0,0,0,1,2026-10-23T05:56:21.059Z
+EuroLeague,Basketball,https://www.euroleaguebasketball.net/euroleague/,robots_unavailable,0,0,0,0,1,2026-10-23T05:56:21.203Z
+Volleyball Nations League,Volleyball,https://en.volleyballworld.com/,no_evidence,0,0,0,0,3,2026-10-23T05:56:29.955Z

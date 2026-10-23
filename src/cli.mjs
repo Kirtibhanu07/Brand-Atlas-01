@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
 import path from "node:path";
-import crypto from "node:crypto";
-import { chromium } from "playwright";
-import sharp from "sharp";
-import { assertPublicUrl, normalizeUrl, parseRobots, safeFetch } from "./network.mjs";
-import { extractPage } from "./extract.mjs";
+import { normalizeUrl, safeFetch } from "./network.mjs";
+import { crawlSite, launchBrowser } from "./browser.mjs";
+import { normalizeLogo, unavailableLogo, assetKey } from "./assets.mjs";
+import { loadCatalog } from "./catalog.mjs";
+import { mapLimit } from "./resilience.mjs";
 import { exportReport } from "./export.mjs";
-import { mergeCandidates, slug } from "./records.mjs";
+import { mergeCandidates } from "./records.mjs";
 
 function usage() {
-  return `Brand Atlas\n\nUsage:\n  node src/cli.mjs <website> [--output DIR] [--max-pages N] [--overrides FILE] [--background white|black] [--headed] [--no-pptx] [--no-zip] [--ignore-robots]\n\nExample:\n  node src/cli.mjs https://premierpadel.com/en/home-page --output output/premier-padel`;
+  return `Brand Atlas\n\nUsage:\n  node src/cli.mjs <website> [--output DIR] [--max-pages N] [--site-timeout SECONDS] [--overrides FILE] [--background white|black] [--headed] [--no-pptx] [--no-zip] [--ignore-robots]\n\nExample:\n  node src/cli.mjs https://premierpadel.com/en/home-page --output output/premier-padel`;
 }
 
 export function parseArgs(argv) {
@@ -19,6 +19,7 @@ export function parseArgs(argv) {
     const a = argv[i];
     if (!a.startsWith("-") && !args.url) args.url = a;
     else if (a === "--output") args.output = argv[++i] || "";
+    else if (a === "--site-timeout") args.siteTimeoutMs = Math.max(10, Math.min(600, Number(argv[++i]) || 120)) * 1000;
     else if (a === "--max-pages") args.maxPages = Math.max(1, Math.min(100, Number(argv[++i]) || 12));
     else if (a === "--overrides") args.overrides = argv[++i] || "";
     else if (a === "--background") {
@@ -36,53 +37,6 @@ export function parseArgs(argv) {
   return args;
 }
 
-const hash = (b) => crypto.createHash("sha256").update(b).digest("hex");
-const BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
-const siteHost = (value) => new URL(value).hostname.replace(/^www\./i, "").toLowerCase();
-
-function decodeDataImage(value) {
-  const match = String(value).match(/^data:(image\/[a-z0-9.+-]+)(?:;charset=[^;,]+)?(;base64)?,(.*)$/is);
-  if (!match) throw new Error("Unsupported embedded image data");
-  const body = match[2] ? Buffer.from(match[3], "base64") : Buffer.from(decodeURIComponent(match[3]));
-  if (body.length > 10_000_000) throw new Error("Embedded image exceeded 10000000 bytes");
-  return { body, mime: match[1].toLowerCase() };
-}
-
-async function browserInstance(headed) {
-  try { return await chromium.launch({ headless: !headed }); }
-  catch (first) {
-    const candidates = [process.env.CHROMIUM_PATH, "/usr/bin/chromium", "/usr/bin/chromium-browser", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].filter(Boolean);
-    for (const chrome of candidates) {
-      try { await fs.access(chrome); return await chromium.launch({ headless: !headed, executablePath: chrome, args: ["--no-sandbox", "--disable-dev-shm-usage"] }); }
-      catch {}
-    }
-    throw new Error(`Could not launch Chromium. Run: npx playwright install chromium\n${first.message}`);
-  }
-}
-
-async function normalizeLogo(candidate, outputDir, ordinal) {
-  let body, mime = "";
-  if (candidate.kind === "inline-svg") { body = Buffer.from(candidate.inlineSvg); mime = "image/svg+xml"; }
-  else if (candidate.kind === "data-image" || String(candidate.sourceUrl).startsWith("data:image/")) ({ body, mime } = decodeDataImage(candidate.sourceUrl));
-  else {
-    if (!candidate.sourceUrl || !/^https?:/i.test(candidate.sourceUrl)) throw new Error("Logo has no downloadable HTTP URL");
-    const response = await safeFetch(candidate.sourceUrl, { maxBytes: 10_000_000, headers: { referer: candidate.sourcePage } });
-    if (response.status < 200 || response.status >= 300) throw new Error(`Logo download returned HTTP ${response.status}`);
-    body = response.body; mime = String(response.headers["content-type"] || "").split(";")[0].toLowerCase();
-  }
-  const digest = hash(body); let ext = mime.includes("svg") || body.subarray(0,200).toString().includes("<svg") ? "svg" : mime.includes("webp") ? "webp" : mime.includes("gif") ? "gif" : mime.includes("jpeg") ? "jpg" : "png";
-  const base = `${String(ordinal).padStart(3,"0")}-${slug(candidate.name)}-${digest.slice(0,8)}`;
-  const rel = path.join("logos", `${base}.${ext}`), previewRel = path.join("previews", `${base}.png`);
-  await fs.mkdir(path.join(outputDir, "logos"), { recursive: true }); await fs.mkdir(path.join(outputDir, "previews"), { recursive: true });
-  await fs.writeFile(path.join(outputDir, rel), body);
-  let info = {};
-  try {
-    const image = sharp(body, { animated: false }); const meta = await image.metadata(); info = { width: meta.width, height: meta.height };
-    await image.resize(900, 420, { fit: "inside", withoutEnlargement: false }).png().toFile(path.join(outputDir, previewRel));
-  } catch { await fs.copyFile(path.join(outputDir, rel), path.join(outputDir, previewRel)).catch(() => {}); }
-  return { path: rel, previewPath: previewRel, sha256: digest, mimeType: mime || `image/${ext}`, sourceUrl: candidate.sourceUrl, status: "downloaded", ...info };
-}
-
 async function applyOverrides(records, file) {
   if (!file) return records;
   const config = JSON.parse(await fs.readFile(path.resolve(file), "utf8"));
@@ -94,70 +48,56 @@ async function applyOverrides(records, file) {
   });
 }
 
-export async function run(options) {
-  const startedAt = new Date().toISOString(), root = normalizeUrl(options.url); await assertPublicUrl(root);
-  const outputDir = path.resolve(options.output); await fs.mkdir(outputDir, { recursive: true });
-  const warnings = [], pages = [], candidates = []; const origin = new URL(root).origin;
-  let robots = { isAllowed: () => true, crawlDelayMs: 0, sitemaps: [] };
-  if (options.respectRobots) {
-    try { const res = await safeFetch(`${origin}/robots.txt`, {maxBytes: 500_000}); if (res.status === 200) robots = parseRobots(res.body.toString("utf8")); else warnings.push(`robots.txt returned HTTP ${res.status}.`); }
-    catch (e) { warnings.push(`robots.txt could not be read: ${e.message}`); }
-  }
-  if (!robots.isAllowed(root)) throw new Error("robots.txt disallows crawling the supplied URL for BrandAtlas");
-  const browser = await browserInstance(options.headed); const context = await browser.newContext({ viewport: {width: 1440,height: 1000}, serviceWorkers: "block", userAgent: BROWSER_UA, locale: "en-US", colorScheme: "light", extraHTTPHeaders: {"accept-language":"en-US,en;q=0.9"} });
-  const dnsCache = new Map();
-  await context.route("**/*", async (route) => {
-    const url = route.request().url();
-    if (/^(data|blob|about):/.test(url)) return route.continue();
-    if (!/^https?:/.test(url)) return route.abort("blockedbyclient");
-    try { const host = new URL(url).hostname; if (!dnsCache.has(host)) dnsCache.set(host, await assertPublicUrl(url)); return route.continue(); }
-    catch { return route.abort("blockedbyclient"); }
-  });
-  const rootUrl = new URL(root); const firstSegment = rootUrl.pathname.split("/").filter(Boolean)[0];
-  const prefixes = firstSegment && /^[a-z]{2}(?:-[a-z]{2})?$/i.test(firstSegment) ? ["", `/${firstSegment}`] : [""];
-  const conventional = prefixes.flatMap((prefix) => ["partners","sponsors","our-partners","official-partners","partnership","marketing","commercial","mitra"].map((name) => `${origin}${prefix}/${name}`));
-  const queue = [root, ...conventional.map((u) => normalizeUrl(u))], seen = new Set(), finalSeen = new Set();
+export async function run(options, dependencies = {}) {
+  const startedAt=new Date().toISOString(),root=normalizeUrl(options.url),outputDir=path.resolve(options.output);
+  await fs.mkdir(outputDir,{recursive:true});
+  const browser=dependencies.browser || await launchBrowser(options.headed);
+  let crawl;
   try {
-    while (queue.length && seen.size < options.maxPages) {
-      const requested = queue.shift(); if (seen.has(requested) || !robots.isAllowed(requested)) continue; seen.add(requested);
-      const page = await context.newPage();
-      try {
-        const response = await page.goto(requested, {waitUntil:"domcontentloaded",timeout:45_000});
-        await page.waitForLoadState("networkidle", {timeout:8_000}).catch(() => {});
-        await page.waitForTimeout(1200);
-        for (let i=0;i<5;i++) { await page.evaluate((step) => scrollTo(0, document.body.scrollHeight * step/5), i+1); await page.waitForTimeout(280); }
-        await page.evaluate(() => scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(700);
-        const out = await extractPage(page); const finalUrl = normalizeUrl(page.url()); if (finalSeen.has(finalUrl)) continue; finalSeen.add(finalUrl); const status = response?.status() || 0; pages.push({url:finalUrl,title:out.title,status});
-        if (status < 200 || status >= 400) warnings.push(`${finalUrl}: page returned HTTP ${status}.`);
-        if (status === 403 && /cloudflare|just a moment|attention required/i.test(out.title || "")) warnings.push(`${finalUrl}: anti-bot protection blocked the automated browser. Try the deployed headful browser mode or provide a public partner page.`);
-        candidates.push(...out.candidates); warnings.push(...out.warnings.map((w) => `${finalUrl}: ${w}`));
-        const discovered = [];
-        for (const link of out.links.sort((a,b) => b.priority-a.priority)) {
-          try { const next = normalizeUrl(link.url, finalUrl); if (siteHost(next) === siteHost(root) && !seen.has(next) && robots.isAllowed(next)) discovered.push(next); } catch {}
-        }
-        queue.unshift(...discovered.filter((next, index) => discovered.indexOf(next) === index));
-      } catch (e) { pages.push({url:requested,title:"",status:0,error:e.message}); warnings.push(`${requested}: ${e.message}`); }
-      finally { await page.close(); }
-      if (robots.crawlDelayMs) await new Promise((r) => setTimeout(r, Math.min(robots.crawlDelayMs, 5000)));
-    }
-  } finally { await browser.close(); }
-  const normalized = [];
-  for (let i=0;i<candidates.length;i++) {
-    const c = candidates[i];
-    try { normalized.push({...c, logo: await normalizeLogo(c, outputDir, i+1)}); }
-    catch (e) { warnings.push(`${c.sourcePage}: could not save ${c.name}: ${e.message}`); }
+    const profile=(await loadCatalog()).find(site=>new URL(site.url).hostname.replace(/^www\./, "")===new URL(root).hostname.replace(/^www\./, ""));
+    crawl=await crawlSite(browser,root,{...options,partnerUrls:options.partnerUrls || profile?.partnerUrls || []});
   }
-  const uniqueWarnings = [...new Set(warnings)];
-  const reviewed = await applyOverrides(normalized, options.overrides);
-  const brands = mergeCandidates(reviewed);
-  if (!brands.length) uniqueWarnings.push("No sponsor or partner logo assets were found in the rendered pages. The site may not publish an inventory or may block automated access.");
-  const reportWarnings = brands.some((b) => b.reviewRequired) ? uniqueWarnings : uniqueWarnings.filter((w) => !w.includes("Some names were inferred"));
-  const manifest = { schemaVersion:"1.0", sourceUrl:root, startedAt, finishedAt:new Date().toISOString(), options:{background:options.background || "white",maxPages:options.maxPages,respectRobots:options.respectRobots,overrides:options.overrides || null}, coverage:{status:queue.length ? "bounded" : reportWarnings.some((w) => /could not|error|timeout|blocked/i.test(w)) ? "partial" : "bounded",pagesVisited:pages.length,pagesDiscovered:seen.size+queue.length,limitReached:seen.size>=options.maxPages&&queue.length>0,warnings:reportWarnings}, pages, brands };
-  const files = await exportReport(manifest, outputDir, {pptx:options.pptx,zip:options.zip});
-  return { manifest, outputDir, files };
+  finally {if(!dependencies.browser)await browser.close();}
+  const warnings=[...crawl.warnings];
+  const uniqueAssets=new Map();
+  const downloads=new Map();
+  const spriteSources=new Set(crawl.candidates.filter(c=>c.crop).map(c=>c.sourceUrl));
+  const fetcher=(url,opts)=>{if(!spriteSources.has(url))return safeFetch(url,opts);if(!downloads.has(url))downloads.set(url,safeFetch(url,opts).catch(error=>{downloads.delete(url);throw error;}));return downloads.get(url);};
+  for(const c of crawl.candidates){
+    const key=assetKey(c);
+    if(!uniqueAssets.has(key))uniqueAssets.set(key,c);
+  }
+  const deadline=Date.now()+(options.assetTimeoutMs||60_000),assetMap=new Map();
+  const jobs=[...uniqueAssets.entries()].slice(0,options.maxLogos||250);
+  await mapLimit(jobs,2,async([key,c],index)=>{
+    try {
+      if(Date.now()>=deadline)throw new Error('Logo download time budget reached');
+      const logo=await normalizeLogo(c,outputDir,index+1,{fetcher,timeoutMs:Math.min(8000,Math.max(1000,deadline-Date.now()))});
+      assetMap.set(key,logo);
+      if(logo.previewError)warnings.push(`${c.name}: ${logo.previewError}`);
+    } catch(error){assetMap.set(key,unavailableLogo(c,error));warnings.push(`${c.name}: ${error.message}`);}
+  });
+  if(uniqueAssets.size>jobs.length)warnings.push(`Logo limit reached: ${jobs.length} of ${uniqueAssets.size} distinct assets were attempted.`);
+  const normalized=crawl.candidates.map(c=>{
+    const key=assetKey(c);
+    const logo=assetMap.get(key)||unavailableLogo(c,new Error('Logo limit reached'));
+    return {...c,logo};
+  });
+  const reviewed=await applyOverrides(normalized,options.overrides),brands=mergeCandidates(reviewed);
+  const downloaded=brands.filter(b=>b.logos.some(l=>l.status==='downloaded')).length;
+  const failedPages=crawl.pages.filter(p=>!['found','no_evidence'].includes(p.outcome));
+  for(const p of failedPages)warnings.push(`${p.url}: ${p.outcome}${p.error?` — ${p.error}`:''}`);
+  if(!brands.length)warnings.push('No sponsor evidence was extracted. This does not mean that the event has no sponsors.');
+  const outcome=brands.length?(downloaded?'found':'assets_unavailable'):crawl.pages.find(p=>['blocked','rate_limited','robots_disallowed','robots_unavailable'].includes(p.outcome))?.outcome||
+    (crawl.pages.some(p=>p.outcome==='no_evidence')?'no_evidence':crawl.pages[0]?.outcome||'no_evidence');
+  const manifest={schemaVersion:'1.1',sourceUrl:root,startedAt,finishedAt:new Date().toISOString(),
+    options:{background:options.background||'white',maxPages:options.maxPages||8,respectRobots:options.respectRobots!==false},
+    coverage:{status:failedPages.length||downloaded<brands.length?'partial':'bounded',outcome,pagesVisited:crawl.pages.length,pagesDiscovered:crawl.pagesDiscovered,limitReached:crawl.limitReached,brandsWithDownloadedLogos:downloaded,warnings:[...new Set(warnings)]},pages:crawl.pages,brands};
+  const files=await exportReport(manifest,outputDir,{pptx:options.pptx,zip:options.zip});
+  return {manifest,outputDir,files};
 }
 
-if (import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
   try {
     const options = parseArgs(process.argv.slice(2)); if (options.help || !options.url) { console.log(usage()); process.exit(options.help ? 0 : 1); }
     const result = await run(options); console.log(`Found ${result.manifest.brands.length} brand records across ${result.manifest.coverage.pagesVisited} pages.`); console.log(`Report: ${path.join(result.outputDir,"index.html")}`);

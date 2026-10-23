@@ -3,12 +3,18 @@
   "version": "1.0.0",
   "description": "Evidence-first website sponsor and logo collector",
   "type": "module",
-  "bin": { "brand-atlas": "./src/cli.mjs" },
+  "bin": {
+    "brand-atlas": "./src/cli.mjs"
+  },
   "scripts": {
     "start": "node src/cli.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "batch": "node src/batch.mjs",
+    "check:sports": "node scripts/check-sports.mjs"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "jszip": "^3.10.1",
     "playwright": "^1.58.0",

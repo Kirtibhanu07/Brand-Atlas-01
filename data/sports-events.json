@@ -1,0 +1,512 @@
+[
+  {
+    "id": "indian-premier-league",
+    "name": "Indian Premier League",
+    "sport": "Cricket",
+    "kind": "league",
+    "url": "https://www.iplt20.com/"
+  },
+  {
+    "id": "icc-cricket-world-cup",
+    "name": "ICC Cricket World Cup",
+    "sport": "Cricket",
+    "kind": "event",
+    "url": "https://www.icc-cricket.com/tournaments/cricketworldcup"
+  },
+  {
+    "id": "women-s-premier-league",
+    "name": "Women's Premier League",
+    "sport": "Cricket",
+    "kind": "league",
+    "url": "https://www.wplt20.com/"
+  },
+  {
+    "id": "big-bash-league",
+    "name": "Big Bash League",
+    "sport": "Cricket",
+    "kind": "league",
+    "url": "https://www.cricket.com.au/big-bash"
+  },
+  {
+    "id": "sa20",
+    "name": "SA20",
+    "sport": "Cricket",
+    "kind": "league",
+    "url": "https://www.sa20.co.za/"
+  },
+  {
+    "id": "pakistan-super-league",
+    "name": "Pakistan Super League",
+    "sport": "Cricket",
+    "kind": "league",
+    "url": "https://www.psl-t20.com/"
+  },
+  {
+    "id": "international-league-t20",
+    "name": "International League T20",
+    "sport": "Cricket",
+    "kind": "league",
+    "url": "https://www.ilt20.ae/"
+  },
+  {
+    "id": "caribbean-premier-league",
+    "name": "Caribbean Premier League",
+    "sport": "Cricket",
+    "kind": "league",
+    "url": "https://www.cplt20.com/"
+  },
+  {
+    "id": "the-hundred",
+    "name": "The Hundred",
+    "sport": "Cricket",
+    "kind": "league",
+    "url": "https://www.thehundred.com/"
+  },
+  {
+    "id": "fifa-world-cup",
+    "name": "FIFA World Cup",
+    "sport": "Football",
+    "kind": "event",
+    "url": "https://www.fifa.com/en/tournaments/mens/worldcup"
+  },
+  {
+    "id": "uefa-champions-league",
+    "name": "UEFA Champions League",
+    "sport": "Football",
+    "kind": "event",
+    "url": "https://www.uefa.com/uefachampionsleague/"
+  },
+  {
+    "id": "uefa-european-championship",
+    "name": "UEFA European Championship",
+    "sport": "Football",
+    "kind": "event",
+    "url": "https://www.uefa.com/uefaeuro/"
+  },
+  {
+    "id": "premier-league",
+    "name": "Premier League",
+    "sport": "Football",
+    "kind": "league",
+    "url": "https://www.premierleague.com/"
+  },
+  {
+    "id": "laliga",
+    "name": "LaLiga",
+    "sport": "Football",
+    "kind": "league",
+    "url": "https://www.laliga.com/en-GB"
+  },
+  {
+    "id": "bundesliga",
+    "name": "Bundesliga",
+    "sport": "Football",
+    "kind": "league",
+    "url": "https://www.bundesliga.com/en/bundesliga"
+  },
+  {
+    "id": "serie-a",
+    "name": "Serie A",
+    "sport": "Football",
+    "kind": "league",
+    "url": "https://en.legaseriea.it/"
+  },
+  {
+    "id": "ligue-1",
+    "name": "Ligue 1",
+    "sport": "Football",
+    "kind": "league",
+    "url": "https://ligue1.com/"
+  },
+  {
+    "id": "major-league-soccer",
+    "name": "Major League Soccer",
+    "sport": "Football",
+    "kind": "league",
+    "url": "https://www.mlssoccer.com/"
+  },
+  {
+    "id": "saudi-pro-league",
+    "name": "Saudi Pro League",
+    "sport": "Football",
+    "kind": "league",
+    "url": "https://www.spl.com.sa/en"
+  },
+  {
+    "id": "afc-asian-cup",
+    "name": "AFC Asian Cup",
+    "sport": "Football",
+    "kind": "event",
+    "url": "https://www.the-afc.com/"
+  },
+  {
+    "id": "copa-america",
+    "name": "Copa America",
+    "sport": "Football",
+    "kind": "event",
+    "url": "https://copaamerica.com/en/"
+  },
+  {
+    "id": "hong-kong-sevens",
+    "name": "Hong Kong Sevens",
+    "sport": "Rugby",
+    "kind": "event",
+    "url": "https://hksevens.com/about-us/sponsors"
+  },
+  {
+    "id": "singapore-sevens",
+    "name": "Singapore Sevens",
+    "sport": "Rugby",
+    "kind": "event",
+    "url": "https://www.svns.com/en/events/singapore/"
+  },
+  {
+    "id": "dubai-rugby-sevens",
+    "name": "Dubai Rugby Sevens",
+    "sport": "Rugby",
+    "kind": "event",
+    "url": "https://dubairugby7s.com/"
+  },
+  {
+    "id": "six-nations",
+    "name": "Six Nations",
+    "sport": "Rugby",
+    "kind": "event",
+    "url": "https://www.sixnationsrugby.com/"
+  },
+  {
+    "id": "rugby-world-cup",
+    "name": "Rugby World Cup",
+    "sport": "Rugby",
+    "kind": "event",
+    "url": "https://www.rugbyworldcup.com/"
+  },
+  {
+    "id": "premiership-rugby",
+    "name": "Premiership Rugby",
+    "sport": "Rugby",
+    "kind": "league",
+    "url": "https://www.premiershiprugby.com/"
+  },
+  {
+    "id": "united-rugby-championship",
+    "name": "United Rugby Championship",
+    "sport": "Rugby",
+    "kind": "league",
+    "url": "https://www.unitedrugby.com/"
+  },
+  {
+    "id": "european-champions-cup",
+    "name": "European Champions Cup",
+    "sport": "Rugby",
+    "kind": "event",
+    "url": "https://www.epcrugby.com/"
+  },
+  {
+    "id": "bwf-world-tour",
+    "name": "BWF World Tour",
+    "sport": "Badminton",
+    "kind": "tour",
+    "url": "https://bwfworldtour.bwfbadminton.com/"
+  },
+  {
+    "id": "all-england-open",
+    "name": "All England Open",
+    "sport": "Badminton",
+    "kind": "event",
+    "url": "https://www.allenglandbadminton.com/"
+  },
+  {
+    "id": "bwf-world-championships",
+    "name": "BWF World Championships",
+    "sport": "Badminton",
+    "kind": "event",
+    "url": "https://bwfbadminton.com/"
+  },
+  {
+    "id": "wimbledon",
+    "name": "Wimbledon",
+    "sport": "Tennis",
+    "kind": "event",
+    "url": "https://www.wimbledon.com/"
+  },
+  {
+    "id": "roland-garros",
+    "name": "Roland Garros",
+    "sport": "Tennis",
+    "kind": "event",
+    "url": "https://www.rolandgarros.com/"
+  },
+  {
+    "id": "us-open-tennis",
+    "name": "US Open Tennis",
+    "sport": "Tennis",
+    "kind": "event",
+    "url": "https://www.usopen.org/"
+  },
+  {
+    "id": "australian-open",
+    "name": "Australian Open",
+    "sport": "Tennis",
+    "kind": "event",
+    "url": "https://ausopen.com/"
+  },
+  {
+    "id": "atp-tour",
+    "name": "ATP Tour",
+    "sport": "Tennis",
+    "kind": "tour",
+    "url": "https://www.atptour.com/"
+  },
+  {
+    "id": "wta-tour",
+    "name": "WTA Tour",
+    "sport": "Tennis",
+    "kind": "tour",
+    "url": "https://www.wtatennis.com/"
+  },
+  {
+    "id": "laver-cup",
+    "name": "Laver Cup",
+    "sport": "Tennis",
+    "kind": "event",
+    "url": "https://lavercup.com/"
+  },
+  {
+    "id": "davis-cup",
+    "name": "Davis Cup",
+    "sport": "Tennis",
+    "kind": "event",
+    "url": "https://www.daviscup.com/"
+  },
+  {
+    "id": "billie-jean-king-cup",
+    "name": "Billie Jean King Cup",
+    "sport": "Tennis",
+    "kind": "event",
+    "url": "https://www.billiejeankingcup.com/"
+  },
+  {
+    "id": "the-masters",
+    "name": "The Masters",
+    "sport": "Golf",
+    "kind": "event",
+    "url": "https://www.masters.com/"
+  },
+  {
+    "id": "the-open",
+    "name": "The Open",
+    "sport": "Golf",
+    "kind": "event",
+    "url": "https://www.theopen.com/"
+  },
+  {
+    "id": "ryder-cup",
+    "name": "Ryder Cup",
+    "sport": "Golf",
+    "kind": "event",
+    "url": "https://www.rydercup.com/"
+  },
+  {
+    "id": "pga-tour",
+    "name": "PGA Tour",
+    "sport": "Golf",
+    "kind": "tour",
+    "url": "https://www.pgatour.com/"
+  },
+  {
+    "id": "liv-golf",
+    "name": "LIV Golf",
+    "sport": "Golf",
+    "kind": "tour",
+    "url": "https://www.livgolf.com/"
+  },
+  {
+    "id": "lpga-tour",
+    "name": "LPGA Tour",
+    "sport": "Golf",
+    "kind": "tour",
+    "url": "https://www.lpga.com/"
+  },
+  {
+    "id": "formula-1",
+    "name": "Formula 1",
+    "sport": "Motorsport",
+    "kind": "tour",
+    "url": "https://www.formula1.com/",
+    "partnerUrls": [
+      "https://www.formula1.com/en/information/formula-1-partners.2shz7bIVhGgS3ovP69N3Rs"
+    ]
+  },
+  {
+    "id": "motogp",
+    "name": "MotoGP",
+    "sport": "Motorsport",
+    "kind": "tour",
+    "url": "https://www.motogp.com/"
+  },
+  {
+    "id": "formula-e",
+    "name": "Formula E",
+    "sport": "Motorsport",
+    "kind": "tour",
+    "url": "https://www.fiaformulae.com/"
+  },
+  {
+    "id": "world-endurance-championship",
+    "name": "World Endurance Championship",
+    "sport": "Motorsport",
+    "kind": "tour",
+    "url": "https://www.fiawec.com/"
+  },
+  {
+    "id": "world-rally-championship",
+    "name": "World Rally Championship",
+    "sport": "Motorsport",
+    "kind": "tour",
+    "url": "https://www.wrc.com/"
+  },
+  {
+    "id": "indycar",
+    "name": "IndyCar",
+    "sport": "Motorsport",
+    "kind": "tour",
+    "url": "https://www.indycar.com/"
+  },
+  {
+    "id": "nascar-cup-series",
+    "name": "NASCAR Cup Series",
+    "sport": "Motorsport",
+    "kind": "tour",
+    "url": "https://www.nascar.com/"
+  },
+  {
+    "id": "tour-de-france",
+    "name": "Tour de France",
+    "sport": "Cycling",
+    "kind": "event",
+    "url": "https://www.letour.fr/en/"
+  },
+  {
+    "id": "giro-d-italia",
+    "name": "Giro d'Italia",
+    "sport": "Cycling",
+    "kind": "event",
+    "url": "https://www.giroditalia.it/en/"
+  },
+  {
+    "id": "la-vuelta",
+    "name": "La Vuelta",
+    "sport": "Cycling",
+    "kind": "event",
+    "url": "https://www.lavuelta.es/en/"
+  },
+  {
+    "id": "diamond-league",
+    "name": "Diamond League",
+    "sport": "Athletics",
+    "kind": "tour",
+    "url": "https://www.diamondleague.com/"
+  },
+  {
+    "id": "world-athletics-championships",
+    "name": "World Athletics Championships",
+    "sport": "Athletics",
+    "kind": "event",
+    "url": "https://worldathletics.org/"
+  },
+  {
+    "id": "london-marathon",
+    "name": "London Marathon",
+    "sport": "Running",
+    "kind": "event",
+    "url": "https://www.londonmarathonevents.co.uk/london-marathon"
+  },
+  {
+    "id": "boston-marathon",
+    "name": "Boston Marathon",
+    "sport": "Running",
+    "kind": "event",
+    "url": "https://www.baa.org/"
+  },
+  {
+    "id": "new-york-city-marathon",
+    "name": "New York City Marathon",
+    "sport": "Running",
+    "kind": "event",
+    "url": "https://www.nyrr.org/tcsnycmarathon"
+  },
+  {
+    "id": "berlin-marathon",
+    "name": "Berlin Marathon",
+    "sport": "Running",
+    "kind": "event",
+    "url": "https://www.bmw-berlin-marathon.com/en/",
+    "partnerUrls": [
+      "https://www.bmw-berlin-marathon.com/en/sponsoren-partner/sponsors-partners"
+    ]
+  },
+  {
+    "id": "chicago-marathon",
+    "name": "Chicago Marathon",
+    "sport": "Running",
+    "kind": "event",
+    "url": "https://www.chicagomarathon.com/"
+  },
+  {
+    "id": "tokyo-marathon",
+    "name": "Tokyo Marathon",
+    "sport": "Running",
+    "kind": "event",
+    "url": "https://www.marathon.tokyo/en/"
+  },
+  {
+    "id": "premier-padel",
+    "name": "Premier Padel",
+    "sport": "Padel",
+    "kind": "tour",
+    "url": "https://premierpadel.com/en"
+  },
+  {
+    "id": "world-padel-league",
+    "name": "World Padel League",
+    "sport": "Padel",
+    "kind": "league",
+    "url": "https://www.wplworld.com/"
+  },
+  {
+    "id": "olympic-games",
+    "name": "Olympic Games",
+    "sport": "Multi-sport",
+    "kind": "event",
+    "url": "https://www.olympics.com/en/"
+  },
+  {
+    "id": "commonwealth-games",
+    "name": "Commonwealth Games",
+    "sport": "Multi-sport",
+    "kind": "event",
+    "url": "https://www.commonwealthsport.com/"
+  },
+  {
+    "id": "nba",
+    "name": "NBA",
+    "sport": "Basketball",
+    "kind": "league",
+    "url": "https://www.nba.com/"
+  },
+  {
+    "id": "euroleague",
+    "name": "EuroLeague",
+    "sport": "Basketball",
+    "kind": "league",
+    "url": "https://www.euroleaguebasketball.net/euroleague/"
+  },
+  {
+    "id": "volleyball-nations-league",
+    "name": "Volleyball Nations League",
+    "sport": "Volleyball",
+    "kind": "event",
+    "url": "https://en.volleyballworld.com/"
+  }
+]
