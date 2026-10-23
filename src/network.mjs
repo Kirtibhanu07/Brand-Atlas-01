@@ -74,10 +74,10 @@ export async function assertPublicUrl(value) {
   return { url, answers };
 }
 
-function decodeBody(buffer, encoding) {
-  if (encoding === "gzip") return zlib.gunzipSync(buffer);
-  if (encoding === "deflate") return zlib.inflateSync(buffer);
-  if (encoding === "br") return zlib.brotliDecompressSync(buffer);
+function decodeBody(buffer, encoding, maxBytes) {
+  if (encoding === "gzip") return zlib.gunzipSync(buffer, { maxOutputLength: maxBytes });
+  if (encoding === "deflate") return zlib.inflateSync(buffer, { maxOutputLength: maxBytes });
+  if (encoding === "br") return zlib.brotliDecompressSync(buffer, { maxOutputLength: maxBytes });
   return buffer;
 }
 
@@ -106,6 +106,8 @@ export async function safeFetch(value, options = {}) {
         res.on("end", () => resolve({ status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks) }));
         res.on("error", reject);
       });
+      const deadlineTimer = setTimeout(() => req.destroy(new Error(`Request timed out after ${timeoutMs} ms`)), timeoutMs);
+      req.once("close", () => clearTimeout(deadlineTimer));
       req.on("timeout", () => req.destroy(new Error(`Request timed out after ${timeoutMs} ms`)));
       req.on("error", reject);
       req.end();
@@ -115,7 +117,7 @@ export async function safeFetch(value, options = {}) {
       href = normalizeUrl(result.headers.location, href);
       continue;
     }
-    const body = decodeBody(result.body, String(result.headers["content-encoding"] ?? "").toLowerCase());
+    const body = decodeBody(result.body, String(result.headers["content-encoding"] ?? "").toLowerCase(), maxBytes);
     if (body.length > maxBytes) throw new Error(`Decoded response exceeded ${maxBytes} bytes`);
     return { url: href, ...result, body };
   }
@@ -127,19 +129,28 @@ function compileRobots(rule) {
 }
 
 export function parseRobots(text, userAgent = "BrandAtlas") {
-  const groups = []; let current = null;
-  const sitemaps = [];
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(/#.*$/, "").trim(); if (!line.includes(":")) continue;
-    const [keyRaw, ...rest] = line.split(":"); const key = keyRaw.toLowerCase(); const value = rest.join(":").trim();
-    if (key === "user-agent") { current = { agent: value.toLowerCase(), rules: [], delay: 0 }; groups.push(current); }
-    else if (key === "sitemap") sitemaps.push(value);
-    else if (current && (key === "allow" || key === "disallow") && value) current.rules.push({ allow: key === "allow", value, re: compileRobots(value) });
-    else if (current && key === "crawl-delay") current.delay = Math.max(0, Number(value) * 1000 || 0);
+  const groups=[];let current=null;const sitemaps=[];
+  for(const raw of text.split(/\r?\n/)){
+    const line=raw.replace(/#.*$/, '').trim();if(!line.includes(':'))continue;
+    const [keyRaw,...rest]=line.split(':'),key=keyRaw.toLowerCase().trim(),value=rest.join(':').trim();
+    if(key==='user-agent'){
+      if(!current||current.hasRules){current={agents:[],rules:[],delay:0,hasRules:false};groups.push(current);}
+      current.agents.push(value.toLowerCase());
+    }else if(key==='sitemap')sitemaps.push(value);
+    else if(current&&['allow','disallow','crawl-delay'].includes(key)){
+      current.hasRules=true;
+      if(key==='crawl-delay')current.delay=Math.max(0,Number(value)*1000||0);
+      else if(value)current.rules.push({allow:key==='allow',value,re:compileRobots(value)});
+    }
   }
-  const ua = userAgent.toLowerCase();
-  const selected = groups.filter((g) => ua.includes(g.agent) || g.agent === "*");
-  const exact = selected.filter((g) => g.agent !== "*"); const active = exact.length ? exact : selected;
-  const rules = active.flatMap((g) => g.rules); const crawlDelayMs = Math.max(0, ...active.map((g) => g.delay));
-  return { sitemaps, crawlDelayMs, isAllowed(value) { const u = new URL(value, "https://robots.invalid"); const matches = rules.filter((r) => r.re.test(u.pathname + u.search)).sort((a,b) => b.value.length - a.value.length || Number(b.allow)-Number(a.allow)); return matches[0]?.allow ?? true; } };
+  const ua=userAgent.toLowerCase();
+  const score=g=>Math.max(0,...g.agents.filter(a=>a!=='*'&&ua.includes(a)).map(a=>a.length));
+  const best=Math.max(0,...groups.map(score));
+  const active=groups.filter(g=>best?score(g)===best:g.agents.includes('*'));
+  const rules=active.flatMap(g=>g.rules),crawlDelayMs=Math.max(0,...active.map(g=>g.delay));
+  return {sitemaps,crawlDelayMs,isAllowed(value){
+    const u=new URL(value,'https://robots.invalid');
+    const matches=rules.filter(r=>r.re.test(u.pathname+u.search)).sort((a,b)=>b.value.replace(/[*$]/g,'').length-a.value.replace(/[*$]/g,'').length||Number(b.allow)-Number(a.allow));
+    return matches[0]?.allow??true;
+  }};
 }

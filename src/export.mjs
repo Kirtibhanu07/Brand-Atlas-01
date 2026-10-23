@@ -17,8 +17,8 @@ async function asDataUrl(file) {
 }
 
 function csv(manifest) {
-  const rows = [["brand","relationship","section","confidence","review_required","brand_url","logo_file","logo_source","evidence_page"]];
-  for (const b of manifest.brands) for (const logo of b.logos.length ? b.logos : [{}]) rows.push([b.name,b.relationship,b.section,b.confidence,b.reviewRequired,b.brandUrl,logo.path,logo.sourceUrl,b.evidence[0]?.sourcePage]);
+  const rows = [["brand","relationship","section","confidence","review_required","brand_url","logo_file","logo_source","evidence_page","logo_status","logo_error","name_source"]];
+  for (const b of manifest.brands) for (const logo of b.logos.length ? b.logos : [{}]) rows.push([b.name,b.relationship,b.section,b.confidence,b.reviewRequired,b.brandUrl,logo.path,logo.sourceUrl,b.evidence[0]?.sourcePage,logo.status,logo.error,b.nameSource]);
   return rows.map((r) => r.map(csvCell).join(",")).join("\n") + "\n";
 }
 
@@ -30,7 +30,7 @@ async function html(manifest, outputDir) {
     const image = await asDataUrl(logo ? path.join(outputDir, logo) : "");
     cards.push(`<article class="brand" data-q="${esc(`${b.name} ${b.relationship} ${b.section}`.toLowerCase())}" data-review="${b.reviewRequired}">
       <div class="mark">${image ? `<img src="${image}" alt="${esc(b.name)} logo">` : `<span>No preview</span>`}</div>
-      <h2>${esc(b.name)}</h2><p>${esc(b.relationship)} · ${esc(b.section || "Unlabelled section")}</p>
+      <h2>${esc(b.name)}</h2>${b.logos.some(l=>l.status === "unavailable") ? `<p>Some logo assets are unavailable; see the JSON report for details.</p>` : ""}<p>${esc(b.relationship)} · ${esc(b.section || "Unlabelled section")}</p>
       <div class="meta"><span>${Math.round(Number(b.confidence) * 100)}% name confidence</span>${b.reviewRequired ? '<b>Review name</b>' : ''}</div>
       <nav>${b.logos[0]?.path ? `<a href="${esc(b.logos[0].path)}" download>Download logo</a>` : ""}${b.brandUrl ? `<a href="${esc(b.brandUrl)}">Brand link</a>` : ""}<a href="${esc(b.evidence[0]?.sourcePage || manifest.sourceUrl)}">Source page</a></nav>
     </article>`);
@@ -40,7 +40,7 @@ async function html(manifest, outputDir) {
   </style></head><body><header><small>Website evidence report</small><h1>Brand Atlas</h1><p>${esc(manifest.sourceUrl)}<br>Captured ${esc(manifest.finishedAt)}. This bounded crawl found ${manifest.brands.length} brand records across ${manifest.coverage.pagesVisited} pages.</p></header>
   <div class="bar"><input id="q" aria-label="Search brands" placeholder="Search brand, relationship, or section"><button id="all">All</button><button id="review">Needs review</button></div>
   <main><p class="coverage"><b>Coverage: ${esc(manifest.coverage.status)}</b> · ${esc(manifest.coverage.warnings.join(" ") || "No crawl warnings.")}</p><section class="grid">${cards.join("\n")}</section></main>
-  <footer>Names marked for review were inferred from website metadata, domains, or asset filenames. Open the source evidence before publishing.</footer><script>const q=document.querySelector('#q'),cards=[...document.querySelectorAll('.brand')];let review=false;function f(){let v=q.value.toLowerCase();cards.forEach(c=>c.hidden=!c.dataset.q.includes(v)||(review&&c.dataset.review!=='true'))}q.oninput=f;all.onclick=()=>{review=false;f()};review.onclick=()=>{review=true;f()}</script></body></html>`;
+  <footer>Names marked for review were inferred from website metadata, domains, or asset filenames. Open the source evidence before publishing.</footer><script>const q=document.querySelector('#q'),cards=[...document.querySelectorAll('.brand')];let review=false;function f(){let v=q.value.toLowerCase();cards.forEach(c=>c.hidden=!c.dataset.q.includes(v)||(review&&c.dataset.review!=='true'))}q.oninput=f;document.querySelector('#all').onclick=()=>{review=false;f()};document.querySelector('#review').onclick=()=>{review=true;f()}</script></body></html>`;
 }
 
 function addText(slide, text, position, style) {
@@ -150,10 +150,7 @@ async function writePptxPortable(manifest, outputDir) {
 async function writePptx(manifest, outputDir) {
   if (process.env.BRAND_ATLAS_PPTX_ENGINE === "portable") return writePptxPortable(manifest, outputDir);
   try { return await writePptxWithArtifactTool(manifest, outputDir); }
-  catch (error) {
-    if (error?.code !== "ERR_MODULE_NOT_FOUND" && !/Cannot find package.*artifact-tool/i.test(error?.message || "")) throw error;
-    return writePptxPortable(manifest, outputDir);
-  }
+  catch { return writePptxPortable(manifest, outputDir); }
 }
 
 export async function exportReport(manifest, outputDir, options = {}) {
@@ -161,11 +158,18 @@ export async function exportReport(manifest, outputDir, options = {}) {
   const jsonPath = path.join(outputDir, "brands.json"); await fs.writeFile(jsonPath, JSON.stringify(manifest, null, 2)); files.push(jsonPath);
   const csvPath = path.join(outputDir, "brands.csv"); await fs.writeFile(csvPath, csv(manifest)); files.push(csvPath);
   const htmlPath = path.join(outputDir, "index.html"); await fs.writeFile(htmlPath, await html(manifest, outputDir)); files.push(htmlPath);
-  if (options.pptx !== false) files.push(await writePptx(manifest, outputDir));
+  if (options.pptx !== false) {
+    try { files.push(await writePptx(manifest, outputDir)); }
+    catch (error) {
+      manifest.coverage.warnings.push(`PowerPoint export unavailable: ${error.message}. Other reports and original assets remain available.`);
+      await fs.writeFile(jsonPath, JSON.stringify(manifest,null,2));
+      await fs.writeFile(htmlPath, await html(manifest,outputDir));
+    }
+  }
   if (options.zip !== false) {
     const zip = new JSZip();
     for (const file of files) zip.file(path.relative(outputDir, file), await fs.readFile(file));
-    for (const b of manifest.brands) for (const l of b.logos) for (const rel of [l.path,l.previewPath].filter(Boolean)) { try { zip.file(rel, await fs.readFile(path.join(outputDir, rel))); } catch {} }
+    for (const b of manifest.brands) for (const l of b.logos) for (const rel of [l.path,l.previewPath,l.originalPath].filter(Boolean)) { try { zip.file(rel, await fs.readFile(path.join(outputDir, rel))); } catch {} }
     const zipPath = path.join(outputDir, "brand-atlas.zip"); await fs.writeFile(zipPath, await zip.generateAsync({type:"nodebuffer",compression:"DEFLATE"})); files.push(zipPath);
   }
   return files;

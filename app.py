@@ -18,6 +18,7 @@ import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
+from scan_runner import run_process
 
 ROOT = Path(__file__).resolve().parent
 WEB_ROOT = ROOT / "web"
@@ -69,16 +70,12 @@ def update_job(job_id: str, **changes) -> None:
 
 def execute_job(job_id: str, website: str, max_pages: int, background: str = "white") -> None:
     output = RUN_ROOT / job_id
-    command = [node_executable(), str(ROOT / "src" / "cli.mjs"), website,
-               "--output", str(output), "--max-pages", str(max_pages), "--background", background]
     with RUN_LIMIT:
         update_job(job_id, status="running")
         try:
-            completed = subprocess.run(
-                command, cwd=ROOT, capture_output=True, text=True,
-                timeout=20 * 60, check=False,
-                env={**os.environ, "NO_COLOR": "1"},
-            )
+            command = [node_executable(), str(ROOT / "src" / "cli.mjs"), website,
+                       "--output", str(output), "--max-pages", str(max_pages), "--background", background, "--site-timeout", "180"]
+            completed = run_process(command, cwd=ROOT, timeout=6 * 60, env={**os.environ, "NO_COLOR": "1", "BRAND_ATLAS_PPTX_ENGINE": "portable"})
             log = (completed.stdout + "\n" + completed.stderr).strip()[-8000:]
             if completed.returncode:
                 update_job(job_id, status="failed", error=log or "Crawler failed")
@@ -90,7 +87,7 @@ def execute_job(job_id: str, website: str, max_pages: int, background: str = "wh
                 coverage=manifest.get("coverage", {}),
                 files={
                     "gallery": f"/runs/{job_id}/index.html",
-                    "powerpoint": f"/runs/{job_id}/brand-atlas.pptx",
+                    **({"powerpoint": f"/runs/{job_id}/brand-atlas.pptx"} if (output / "brand-atlas.pptx").is_file() else {}),
                     "package": f"/runs/{job_id}/brand-atlas.zip",
                     "json": f"/runs/{job_id}/brands.json",
                     "csv": f"/runs/{job_id}/brands.csv",
@@ -130,6 +127,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         route = urlsplit(self.path).path
+        if route == "/api/events":
+            self.json_response(200, {"events": json.loads((ROOT / "data" / "sports-events.json").read_text())})
+            return
         if route == "/":
             self.file_response(WEB_ROOT / "index.html")
             return
@@ -157,6 +157,8 @@ class Handler(BaseHTTPRequestHandler):
             if length < 2 or length > 65536:
                 raise ValueError("Invalid request size")
             body = json.loads(self.rfile.read(length))
+            if not isinstance(body, dict):
+                raise ValueError("Request body must be an object")
             website = validate_website(body.get("website", ""))
             background = body.get("background", "white")
             if background not in ("white", "black"):

@@ -9,12 +9,12 @@ export function mergeCandidates(records) {
   const map = new Map();
   const logoOwners = new Map();
   for (const record of records) {
-    const nameKey = record.name.toLowerCase().replace(/[^a-z0-9]+/g, "") || record.logo.sha256;
+    const nameKey = /^(unknown logo|image|logo)$/i.test(record.name) ? record.logo.sha256 : record.name.toLowerCase().replace(/[^a-z0-9]+/g, "") || record.logo.sha256;
     const key = logoOwners.get(record.logo.sha256) || nameKey;
     let brand = map.get(key);
     if (!brand) {
       brand = {
-        id: slug(record.name), name: record.name, nameSource: record.nameSource,
+        id: /^(unknown logo|image|logo)$/i.test(record.name) ? `${slug(record.name)}-${record.logo.sha256.slice(-8)}` : slug(record.name), name: record.name, nameSource: record.nameSource,
         confidence: record.confidence, reviewRequired: record.reviewRequired,
         relationship: record.relationship, relationships: [record.relationship],
         section: record.section, brandUrl: record.brandUrl, evidence: [], logos: [],
@@ -22,7 +22,7 @@ export function mergeCandidates(records) {
       map.set(key, brand);
     } else if (record.confidence > brand.confidence || (!record.reviewRequired && brand.reviewRequired)) {
       Object.assign(brand, {
-        id: slug(record.name), name: record.name, nameSource: record.nameSource,
+        id: /^(unknown logo|image|logo)$/i.test(record.name) ? `${slug(record.name)}-${record.logo.sha256.slice(-8)}` : slug(record.name), name: record.name, nameSource: record.nameSource,
         confidence: record.confidence, reviewRequired: record.reviewRequired,
         relationship: record.relationship, relationships: [record.relationship],
         section: record.section, brandUrl: record.brandUrl || brand.brandUrl,

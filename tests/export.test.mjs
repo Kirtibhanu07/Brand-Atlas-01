@@ -53,3 +53,15 @@ for (const background of ["white", "black"]) {
     }
   });
 }
+
+test('unavailable logos still produce useful reports and an openable presentation', async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'brand-unavailable-'));
+ const manifest={sourceUrl:'https://event.example',finishedAt:'2026-10-23',coverage:{status:'partial',outcome:'assets_unavailable',pagesVisited:1,warnings:[]},brands:[{name:'Acme',relationship:'Sponsor',section:'Title sponsor',nameSource:'page metadata',confidence:.92,reviewRequired:false,evidence:[],logos:[{status:'unavailable',error:'Logo download returned HTTP 403',sourceUrl:'https://cdn.example/logo.png'}]}]};
+ const previous=process.env.BRAND_ATLAS_PPTX_ENGINE;process.env.BRAND_ATLAS_PPTX_ENGINE='portable';
+ try{
+  await exportReport(manifest,dir);
+  assert.match(await fs.readFile(path.join(dir,'brands.csv'),'utf8'),/unavailable/);
+  assert.match(await fs.readFile(path.join(dir,'index.html'),'utf8'),/Some logo assets are unavailable/);
+  assert.ok((await JSZip.loadAsync(await fs.readFile(path.join(dir,'brand-atlas.pptx')))).file('ppt/slides/slide2.xml'));
+ }finally{if(previous===undefined)delete process.env.BRAND_ATLAS_PPTX_ENGINE;else process.env.BRAND_ATLAS_PPTX_ENGINE=previous;await fs.rm(dir,{recursive:true,force:true});}
+});

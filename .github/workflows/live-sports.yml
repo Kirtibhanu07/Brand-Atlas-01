@@ -1,0 +1,44 @@
+name: Live sports website validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      event_ids:
+        description: 'Optional comma-separated catalog IDs; leave empty to check all 72'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-sports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --include=optional --no-audit --no-fund
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: npx playwright install --with-deps chromium
+      - name: Check selected sports websites
+        env:
+          EVENT_IDS: ${{ inputs.event_ids }}
+          BRAND_ATLAS_PPTX_ENGINE: portable
+        run: |
+          if [ -n "$EVENT_IDS" ]; then
+            node src/batch.mjs --ids "$EVENT_IDS" --output output/live-validation --concurrency 2 --max-pages 3
+          else
+            node src/batch.mjs --output output/live-validation --concurrency 2 --max-pages 3
+          fi
+      - name: Save evidence and per-site results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sports-website-validation
+          path: output/live-validation/
+          retention-days: 7
+          if-no-files-found: warn
